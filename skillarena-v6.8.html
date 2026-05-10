@@ -1,0 +1,2373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillArena — CFA Villemendeur</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --c1:#F5C842;--c2:#FF4D6A;
+  --bg:#07080F;--surface:#0F1020;--card:#141628;--card2:#1C1E35;
+  --border:rgba(255,255,255,0.07);--text:#EEF0FF;--muted:#5A5C7A;
+  --radius:18px;--font-body:'Outfit',sans-serif;--font-display:'Bebas Neue',sans-serif;
+}
+[data-theme="1"]{--c1:#F5C842;--c2:#FF4D6A;}
+[data-theme="2"]{--c1:#4C7BFF;--c2:#FF4D8D;}
+[data-theme="3"]{--c1:#111;--c2:#fff;--bg:#F0F0F5;--surface:#E0E0EA;--card:#fff;--card2:#F5F5FA;--text:#111;--muted:#888;--border:rgba(0,0,0,0.1);}
+[data-theme="4"]{--c1:#FF3C3C;--c2:#FFD700;}
+[data-theme="5"]{--c1:#00FFA3;--c2:#7B2FFF;}
+[data-theme="6"]{--c1:#FF6B35;--c2:#1A1AFF;}
+[data-theme="7"]{--c1:#E040FB;--c2:#00E5FF;}
+[data-theme="8"]{--c1:#FF1744;--c2:#FF6D00;}
+[data-theme="9"]{--c1:#76FF03;--c2:#FF3D00;}
+[data-theme="10"]{--c1:#FFFFFF;--c2:#F5C842;}
+[data-theme="11"]{--c1:#FF4081;--c2:#40C4FF;}
+[data-theme="12"]{--c1:#EEFF41;--c2:#FF1744;}
+[data-theme="13"]{--c1:#40FFAA;--c2:#FF4040;}
+[data-theme="14"]{--c1:#AA00FF;--c2:#FFD740;}
+[data-theme="15"]{--c1:#FF6E40;--c2:#40C4FF;}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .4s,color .4s;}
+
+/* ── CANVAS ── */
+#bgCanvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:1;}
+
+/* ── HEADER ── */
+header{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(7,8,15,0.88);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);}
+.logo{font-family:var(--font-display);font-size:24px;letter-spacing:3px;background:linear-gradient(135deg,var(--c1),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:flex;align-items:center;gap:8px;}
+.logo-pulse{width:8px;height:8px;border-radius:50%;background:var(--c2);-webkit-text-fill-color:initial;animation:pulse 2s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,77,106,.5);}50%{box-shadow:0 0 0 10px rgba(255,77,106,0);}}
+.hright{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+/* Bigger header buttons */
+.hbtn{padding:10px 18px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text);font-family:var(--font-body);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;}
+.hbtn:hover{background:var(--card2);border-color:var(--c1);}
+.hbtn-icon{font-size:22px;background:transparent;border:2px solid var(--border);border-radius:12px;cursor:pointer;padding:8px 12px;transition:all .2s;display:flex;align-items:center;justify-content:center;}
+.hbtn-icon:hover{border-color:var(--c1);transform:scale(1.1);background:var(--card2);}
+.user-chip{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:100px;padding:6px 16px 6px 6px;cursor:pointer;transition:all .2s;}
+.user-chip:hover{border-color:var(--c1);}
+.uav{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;background:var(--card2);border:2px solid var(--c1);}
+
+/* ── PAGES ── */
+.page{display:none;min-height:100vh;padding-top:72px;position:relative;z-index:5;}
+.page.active{display:block;}
+#page-auth{display:none;align-items:center;justify-content:center;min-height:100vh;}
+#page-auth.active{display:flex;}
+#page-result{display:none;align-items:center;justify-content:center;min-height:100vh;padding:90px 20px 40px;}
+#page-result.active{display:flex;}
+
+/* ── OVERLAY/MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(7,8,15,.93);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(14px);padding:16px;}
+.overlay.open{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:28px;padding:36px;width:100%;max-width:540px;animation:fadeUp .35s ease both;max-height:90vh;overflow-y:auto;}
+.modal-title{font-family:var(--font-display);font-size:36px;letter-spacing:2px;margin-bottom:6px;}
+.modal-sub{color:var(--muted);font-size:13px;margin-bottom:22px;}
+
+/* ── BUTTONS ── */
+.btn{padding:14px 26px;border-radius:14px;border:none;font-family:var(--font-body);font-size:15px;font-weight:700;cursor:pointer;transition:all .22s;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
+.btn-primary{background:linear-gradient(135deg,var(--c1),var(--c2));color:#07080F;}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(245,200,66,.3);}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border);}
+.btn-outline:hover{background:var(--card2);transform:translateY(-2px);}
+.btn-full{width:100%;}
+.btn-sm{padding:9px 16px;font-size:13px;border-radius:10px;}
+
+/* ── AUTH ── */
+.auth-box{background:var(--card);border:1px solid var(--border);border-radius:28px;padding:44px 36px;width:100%;max-width:400px;animation:fadeUp .5s ease both;}
+.auth-logo{font-family:var(--font-display);font-size:40px;letter-spacing:4px;text-align:center;background:linear-gradient(135deg,var(--c1),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.auth-sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:24px;}
+.auth-tabs{display:flex;background:var(--card2);border-radius:12px;padding:4px;margin-bottom:22px;}
+.auth-tab{flex:1;padding:10px;text-align:center;border-radius:9px;cursor:pointer;font-weight:700;font-size:14px;color:var(--muted);transition:all .2s;}
+.auth-tab.active{background:linear-gradient(135deg,var(--c1),var(--c2));color:#07080F;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px;}
+.field input,.field select{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-family:var(--font-body);font-size:15px;color:var(--text);outline:none;transition:border .2s;}
+.field input:focus,.field select:focus{border-color:var(--c1);}
+.field input::placeholder{color:var(--muted);}
+.auth-err{color:#FF4D6A;font-size:13px;margin-top:10px;text-align:center;display:none;}
+
+/* ── HOME HERO ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:90px 20px 60px;text-align:center;gap:24px;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.25);color:var(--c1);font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;padding:8px 22px;border-radius:100px;animation:fadeUp .5s ease both;}
+.hero-title{font-family:var(--font-display);font-size:clamp(68px,13vw,148px);line-height:.86;letter-spacing:2px;animation:fadeUp .5s .1s ease both;}
+.hero-title .t1{background:linear-gradient(135deg,var(--c1),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-desc{font-size:17px;color:var(--muted);max-width:500px;line-height:1.7;animation:fadeUp .5s .2s ease both;}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;animation:fadeUp .5s .3s ease both;}
+.hero-cta .btn{min-width:180px;}
+.hero-stats{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;animation:fadeUp .5s .4s ease both;}
+.hstat{text-align:center;}
+.hstat-n{font-family:var(--font-display);font-size:46px;line-height:1;background:linear-gradient(135deg,var(--c1),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hstat-l{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;max-width:700px;width:100%;animation:fadeUp .5s .5s ease both;}
+.qa-btn{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 12px;cursor:pointer;transition:all .22s;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;overflow:hidden;}
+.qa-btn:hover{border-color:var(--c1);transform:translateY(-4px);background:var(--card2);}
+.qa-icon{font-size:30px;}
+.qa-label{font-size:13px;font-weight:700;}
+.qa-sub{font-size:11px;color:var(--muted);}
+
+/* ── CATEGORIES ── */
+.page-header{padding:28px 28px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.page-title{font-family:var(--font-display);font-size:40px;letter-spacing:2px;}
+.cats-search{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 16px;font-family:var(--font-body);font-size:14px;color:var(--text);outline:none;width:220px;transition:border .2s;}
+.cats-search:focus{border-color:var(--c1);}
+.cats-search::placeholder{color:var(--muted);}
+.cats-filter{display:flex;gap:8px;padding:0 28px 18px;flex-wrap:wrap;}
+.cf-btn{padding:7px 16px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-body);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;}
+.cf-btn.active,.cf-btn:hover{background:linear-gradient(135deg,var(--c1),var(--c2));border-color:transparent;color:#07080F;}
+.cats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:14px;padding:0 28px 100px;}
+.cat-card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:22px 18px;cursor:pointer;transition:all .25s;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;}
+.cat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--c1),var(--c2));transform:scaleX(0);transition:transform .3s;transform-origin:left;}
+.cat-card:hover::before{transform:scaleX(1);}
+.cat-card:hover{border-color:var(--c1);transform:translateY(-5px);background:var(--card2);box-shadow:0 16px 40px rgba(0,0,0,.3);}
+.cat-icon{font-size:34px;}
+.cat-name{font-weight:800;font-size:15px;}
+.cat-desc{font-size:11px;color:var(--muted);line-height:1.5;}
+.cat-meta{display:flex;align-items:center;justify-content:space-between;margin-top:4px;}
+.cat-qc{font-size:11px;color:var(--c1);font-weight:700;}
+.cat-lvls{display:flex;gap:4px;}
+.lvl-dot{width:7px;height:7px;border-radius:50%;background:var(--border);}
+.lvl-dot.on{background:linear-gradient(135deg,var(--c1),var(--c2));}
+
+/* ── DIFF MODAL ── */
+.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.diff-btn{background:var(--card2);border:2px solid var(--border);border-radius:14px;padding:18px 12px;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:var(--font-body);color:var(--text);}
+.diff-btn:hover,.diff-btn.sel{border-color:var(--c1);background:rgba(245,200,66,.08);}
+.diff-icon{font-size:28px;}
+.diff-name{font-weight:800;font-size:15px;}
+.diff-pts{font-size:12px;color:var(--c1);font-weight:700;}
+.diff-time{font-size:11px;color:var(--muted);}
+
+/* ── QUIZ ── */
+.quiz-wrap{max-width:680px;margin:0 auto;padding:24px 16px 100px;display:flex;flex-direction:column;gap:18px;}
+.quiz-hud{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.hud-left{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:100px;font-size:12px;font-weight:700;border:1px solid;}
+.badge-c1{background:rgba(245,200,66,.1);border-color:rgba(245,200,66,.3);color:var(--c1);}
+.badge-c2{background:rgba(255,77,106,.1);border-color:rgba(255,77,106,.3);color:var(--c2);}
+.badge-gray{background:var(--card2);border-color:var(--border);color:var(--muted);}
+.timer-wrap{position:relative;width:58px;height:58px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.timer-wrap svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
+.timer-wrap circle{fill:none;stroke-width:4;stroke-linecap:round;}
+.t-bg{stroke:var(--card2);}
+.t-fg{stroke:var(--c1);stroke-dasharray:160;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke .3s;}
+.t-num{font-family:var(--font-display);font-size:20px;color:var(--c1);z-index:1;}
+.prog-bar{height:5px;background:var(--card2);border-radius:100px;overflow:hidden;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--c1),var(--c2));border-radius:100px;transition:width .4s;}
+.q-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;animation:fadeUp .35s ease both;}
+.q-tag{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+.q-text{font-size:clamp(16px,2.5vw,20px);font-weight:700;line-height:1.45;}
+.ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:500px){.ans-grid{grid-template-columns:1fr;}}
+.ans-btn{background:var(--card2);border:2px solid var(--border);border-radius:14px;padding:16px 14px;cursor:pointer;transition:all .18s;color:var(--text);font-family:var(--font-body);font-size:14px;font-weight:600;text-align:left;display:flex;align-items:center;gap:10px;line-height:1.3;}
+.ans-btn:hover:not(:disabled){border-color:var(--c1);background:rgba(245,200,66,.08);transform:translateY(-1px);}
+.ans-btn.correct{border-color:#22D47A!important;background:rgba(34,212,122,.12)!important;color:#22D47A!important;}
+.ans-btn.wrong{border-color:var(--c2)!important;background:rgba(255,77,106,.12)!important;color:var(--c2)!important;}
+.ans-btn:disabled{cursor:default;}
+.ans-letter{width:28px;height:28px;min-width:28px;border-radius:8px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;}
+.feedback{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 22px;display:none;align-items:center;gap:12px;}
+.feedback.show{display:flex;animation:fadeUp .3s ease both;}
+.feedback.ok{border-color:rgba(34,212,122,.3);}
+.feedback.bad{border-color:rgba(255,77,106,.3);}
+.fb-icon{font-size:26px;}
+.fb-title{font-weight:800;font-size:14px;}
+.fb-desc{font-size:12px;color:var(--muted);margin-top:2px;}
+.score-float{position:fixed;bottom:90px;left:16px;z-index:150;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 18px;display:none;flex-direction:column;align-items:center;backdrop-filter:blur(10px);}
+.score-float.show{display:flex;}
+.sf-num{font-family:var(--font-display);font-size:28px;color:var(--c1);line-height:1;}
+.sf-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.score-pop{position:fixed;font-family:var(--font-display);font-size:40px;pointer-events:none;z-index:300;animation:scorePop 1.2s ease forwards;background:linear-gradient(135deg,var(--c1),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+@keyframes scorePop{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-80px) scale(1.5);}}
+
+/* ── RESULT ── */
+.result-box{background:var(--card);border:1px solid var(--border);border-radius:28px;padding:44px 36px;max-width:460px;width:100%;text-align:center;animation:fadeUp .5s ease both;}
+.result-trophy{font-size:68px;margin-bottom:14px;animation:bounce .8s ease;}
+@keyframes bounce{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+.result-title{font-family:var(--font-display);font-size:50px;letter-spacing:2px;line-height:1;background:linear-gradient(135deg,var(--c1),var(--c2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.result-sub{color:var(--muted);font-size:13px;margin:8px 0 24px;}
+.result-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:24px;}
+.rstat{background:var(--card2);border-radius:12px;padding:14px 6px;}
+.rstat-n{font-family:var(--font-display);font-size:34px;color:var(--c1);line-height:1;}
+.rstat-l{font-size:10px;color:var(--muted);margin-top:3px;}
+.result-actions{display:flex;flex-direction:column;gap:8px;}
+
+/* ── PROFILE ── */
+.profile-banner{background:linear-gradient(135deg,var(--card),var(--card2));border-bottom:1px solid var(--border);padding:28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.pav-big{width:80px;height:80px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:44px;background:var(--card2);border:3px solid var(--c1);cursor:pointer;transition:transform .2s;flex-shrink:0;}
+.pav-big:hover{transform:scale(1.05);}
+.pinfo{flex:1;}
+.pname{font-family:var(--font-display);font-size:30px;letter-spacing:2px;}
+.pemail{font-size:12px;color:var(--muted);margin-top:2px;}
+.pstats{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;}
+.ps{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 16px;text-align:center;}
+.ps-n{font-family:var(--font-display);font-size:22px;color:var(--c1);}
+.ps-l{font-size:10px;color:var(--muted);}
+.xp-wrap{margin-top:14px;}
+.xp-lbl{font-size:11px;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between;}
+.xp-bar{height:7px;background:var(--card2);border-radius:100px;overflow:hidden;}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--c1),var(--c2));border-radius:100px;transition:width 1s ease;}
+
+/* ── AVATARS ── */
+.section{padding:24px 28px;}
+.section-title{font-family:var(--font-display);font-size:28px;letter-spacing:2px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.avatars-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:12px;}
+.av-item{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.av-item.unlocked{border-color:var(--c1);}
+.av-item.unlocked:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(245,200,66,.2);}
+.av-item.locked{opacity:.4;cursor:default;}
+.av-emoji{font-size:32px;display:block;margin-bottom:4px;}
+.av-name{font-size:10px;color:var(--muted);font-weight:600;}
+.av-active{position:absolute;top:4px;right:4px;width:10px;height:10px;background:var(--c1);border-radius:50%;}
+.av-secret{font-size:9px;color:var(--c2);font-weight:700;margin-top:2px;}
+
+/* ── TROPHIES ── */
+.trophies-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.trophy-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;transition:all .2s;position:relative;overflow:hidden;}
+.trophy-card.unlocked{border-color:var(--trophy-color,var(--c1));}
+.trophy-card.locked{opacity:.5;}
+.trophy-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--trophy-color,var(--c1));}
+.trophy-icon{font-size:28px;}
+.trophy-name{font-weight:700;font-size:13px;line-height:1.3;}
+.trophy-desc{font-size:11px;color:var(--muted);line-height:1.4;}
+.trophy-tier{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--trophy-color,var(--c1));}
+.trophy-progress{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* ── LEADERBOARD ── */
+.lb-filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;padding:0 28px;}
+.lf-btn{padding:7px 14px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font-body);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;}
+.lf-btn.active{background:linear-gradient(135deg,var(--c1),var(--c2));border-color:transparent;color:#07080F;}
+.lb-section{padding:0 28px 100px;}
+.lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:10px 0 28px;}
+.pod-slot{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;max-width:140px;}
+.pod-av{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:32px;background:var(--card2);}
+.pod-block{width:100%;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;padding:10px;}
+.pod-rank{font-family:var(--font-display);font-size:30px;}
+.pod-name{font-size:12px;font-weight:800;text-align:center;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pod-sc{font-size:10px;color:var(--muted);}
+.p1 .pod-block{height:90px;background:rgba(245,200,66,.15);}
+.p1 .pod-rank{color:var(--c1);}
+.p1 .pod-av{border:3px solid var(--c1);}
+.p2 .pod-block{height:65px;background:rgba(192,192,192,.1);}
+.p2 .pod-rank{color:#C0C0C0;}
+.p2 .pod-av{border:3px solid #C0C0C0;}
+.p3 .pod-block{height:46px;background:rgba(205,127,50,.1);}
+.p3 .pod-rank{color:#CD7F32;}
+.p3 .pod-av{border:3px solid #CD7F32;}
+.lb-rows{display:flex;flex-direction:column;gap:7px;}
+.lb-row{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:12px 18px;display:flex;align-items:center;gap:12px;transition:all .2s;}
+.lb-row:hover{background:var(--card2);}
+.lb-row.me{border-color:var(--c1);background:rgba(245,200,66,.04);}
+.lb-pos{font-family:var(--font-display);font-size:20px;color:var(--muted);width:26px;text-align:center;}
+.lb-av{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--card2);flex-shrink:0;}
+.lb-info{flex:1;}
+.lb-nm{font-weight:700;font-size:14px;}
+.lb-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.lb-sc{text-align:right;}
+.lb-sc-n{font-family:var(--font-display);font-size:26px;color:var(--c1);line-height:1;}
+.lb-sc-l{font-size:10px;color:var(--muted);}
+
+/* ── BOTTOM NAV ── */
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(7,8,15,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:8px 0 18px;display:none;}
+.bnav.show{display:flex;justify-content:space-around;}
+.bni{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);transition:color .2s;padding:4px 14px;}
+.bni.active{color:var(--c1);}
+.bni-icon{font-size:22px;}
+.bni-label{font-size:10px;font-weight:700;letter-spacing:.5px;}
+
+/* ── THEME/FONT PICKERS ── */
+.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px;}
+.theme-swatch{aspect-ratio:1;border-radius:12px;cursor:pointer;border:3px solid transparent;transition:all .2s;position:relative;overflow:hidden;}
+.theme-swatch:hover{transform:scale(1.08);}
+.theme-swatch.selected{border-color:white;box-shadow:0 0 0 2px rgba(255,255,255,.4);}
+.theme-swatch::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;font-weight:900;opacity:0;transition:opacity .2s;text-shadow:0 1px 4px rgba(0,0,0,.5);}
+.theme-swatch.selected::after{opacity:1;}
+.theme-name{font-size:11px;color:var(--muted);text-align:center;margin-top:4px;}
+.font-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;}
+.font-opt{background:var(--card2);border:2px solid var(--border);border-radius:12px;padding:14px 18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:space-between;}
+.font-opt:hover,.font-opt.selected{border-color:var(--c1);}
+
+/* ── MULTI ── */
+.multi-opt{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+.multi-opt:hover{border-color:var(--c1);transform:translateX(4px);}
+.code-display{font-family:var(--font-display);font-size:48px;letter-spacing:10px;color:var(--c1);text-align:center;padding:18px;background:var(--card2);border-radius:14px;margin:14px 0;border:2px dashed rgba(245,200,66,.3);}
+.waiting-player{background:var(--card2);border-radius:10px;padding:9px 14px;display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;margin-bottom:7px;}
+.wdot{width:7px;height:7px;border-radius:50%;background:#22D47A;animation:pulse 1.5s infinite;}
+
+/* ── UNLOCK TOAST ── */
+.unlock-toast{position:fixed;top:90px;left:50%;transform:translateX(-50%) scale(.8);background:var(--card);border:2px solid var(--c1);border-radius:20px;padding:20px 28px;z-index:600;opacity:0;transition:all .4s;pointer-events:none;text-align:center;min-width:260px;}
+.unlock-toast.show{opacity:1;transform:translateX(-50%) scale(1);}
+.unlock-emoji{font-size:48px;display:block;margin-bottom:8px;}
+.unlock-title{font-family:var(--font-display);font-size:22px;letter-spacing:2px;color:var(--c1);}
+.unlock-sub{font-size:13px;color:var(--muted);margin-top:4px;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:11px 22px;font-size:13px;font-weight:700;z-index:600;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:#22D47A;color:#22D47A;}
+.toast.err{border-color:#FF4D6A;color:#FF4D6A;}
+
+/* ── ANIM ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@keyframes podBounce{0%{transform:scale(.8);opacity:0;}60%{transform:scale(1.1);}100%{transform:scale(1);opacity:1;}}
+@keyframes shimmer{0%,100%{opacity:.6;}50%{opacity:1;}}
+
+@media(max-width:600px){
+  header{padding:12px 14px;}
+  .hbtn-icon{padding:7px 10px;font-size:20px;}
+  .cats-grid,.trophies-grid{padding:0 12px 100px;}
+  .page-header{padding:20px 12px 12px;}
+  .cats-filter{padding:0 12px 14px;}
+  .lb-filters{padding:0 12px;}
+  .lb-section{padding:0 12px 100px;}
+  .section{padding:20px 16px;}
+  .modal{padding:24px 16px;}
+  .auth-box{padding:28px 20px;}
+}
+</style>
+</head>
+<body data-theme="1">
+
+<canvas id="bgCanvas"></canvas>
+
+<!-- SCORE FLOAT -->
+<div class="score-float" id="scoreFloat"><div class="sf-num" id="sfNum">0</div><div class="sf-label">points</div></div>
+
+<!-- UNLOCK TOAST -->
+<div class="unlock-toast" id="unlockToast">
+  <span class="unlock-emoji" id="unlockEmoji">🏆</span>
+  <div class="unlock-title" id="unlockTitle">DÉBLOQUÉ !</div>
+  <div class="unlock-sub" id="unlockSub">Nouveau truc gagné</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- HEADER -->
+<header id="mainHeader" style="display:none">
+  <div class="logo">SKILL<span style="opacity:.6">ARENA</span><div class="logo-pulse"></div></div>
+  <div class="hright">
+    <button class="hbtn-icon" onclick="toggleMusic()" id="musicBtn" title="Musique">🔇</button>
+    <button class="hbtn-icon" onclick="openThemePicker()" title="Thème">🎨</button>
+    <button class="hbtn-icon" onclick="openFontPicker()" title="Police">𝐀𝐚</button>
+    <div class="user-chip" onclick="showPage('profile')">
+      <div class="uav" id="headerAv">😊</div>
+      <span id="headerName" style="font-weight:700;font-size:14px;">...</span>
+    </div>
+    <button class="hbtn-icon" onclick="logout()" title="Déconnexion">⏻</button>
+  </div>
+</header>
+
+<!-- BOTTOM NAV -->
+<div class="bnav" id="bnav">
+  <div class="bni active" data-page="home" onclick="showPage('home')"><div class="bni-icon">🏠</div><div class="bni-label">Accueil</div></div>
+  <div class="bni" data-page="categories" onclick="showPage('categories')"><div class="bni-icon">🎮</div><div class="bni-label">Jouer</div></div>
+  <div class="bni" data-page="leaderboard" onclick="showPage('leaderboard')"><div class="bni-icon">🏆</div><div class="bni-label">Classement</div></div>
+  <div class="bni" data-page="profile" onclick="showPage('profile')"><div class="bni-icon">👤</div><div class="bni-label">Profil</div></div>
+</div>
+
+<!-- ═══ AUTH ═══ -->
+<div class="page" id="page-auth">
+  <div class="auth-box">
+    <div class="auth-logo">⚡ SKILLARENA</div>
+    <div class="auth-sub">CFA Villemendeur — Entraîne-toi, grimpe, domine.</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Connexion</div>
+      <div class="auth-tab" onclick="switchTab('signup')">Inscription</div>
+    </div>
+    <div id="form-login">
+      <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="ton@email.com"></div>
+      <div class="field"><label>Mot de passe</label><input type="password" id="loginPwd" placeholder="••••••••"></div>
+      <button class="btn btn-primary btn-full" onclick="login()">Se connecter →</button>
+      <div style="text-align:center;margin-top:14px;">
+        <span onclick="switchTab('reset')" style="color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;transition:color .2s;" onmouseover="this.style.color='var(--c1)'" onmouseout="this.style.color='var(--muted)'">🔑 Mot de passe oublié ?</span>
+      </div>
+    </div>
+    <div id="form-signup" style="display:none">
+      <div class="field"><label>Pseudo</label><input type="text" id="signupName" placeholder="TonPseudo" maxlength="20"></div>
+      <div class="field"><label>Email</label><input type="email" id="signupEmail" placeholder="ton@email.com"></div>
+      <div class="field"><label>Mot de passe</label><input type="password" id="signupPwd" placeholder="Min. 6 caractères"></div>
+      <div class="field"><label>Tu es</label>
+        <select id="signupRole">
+          <option value="eleve">🎓 Élève / Alternant</option>
+          <option value="formateur">👔 Formateur</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="signup()">Créer mon compte →</button>
+    </div>
+    <div id="form-reset" style="display:none">
+      <div style="text-align:center;margin-bottom:18px;font-size:13px;color:var(--muted);">Entre ton email et on t'envoie un lien pour réinitialiser ton mot de passe.</div>
+      <div class="field"><label>Email</label><input type="email" id="resetEmail" placeholder="ton@email.com"></div>
+      <button class="btn btn-primary btn-full" onclick="resetPassword()">Envoyer le lien 📧</button>
+      <div style="text-align:center;margin-top:14px;">
+        <span onclick="switchTab('login')" style="color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;" onmouseover="this.style.color='var(--c1)'" onmouseout="this.style.color='var(--muted)'">← Retour à la connexion</span>
+      </div>
+    </div>
+    <div class="auth-err" id="authErr"></div>
+    <div class="auth-err" id="authOk" style="color:#00FFA3;"></div>
+  </div>
+</div>
+
+<!-- ═══ HOME ═══ -->
+<div class="page" id="page-home">
+  <div class="hero">
+    <div class="hero-badge">⚡ 20 Catégories · Avatars · Trophées · Multijoueur</div>
+    <h1 class="hero-title">ENTRAÎNE<br><span class="t1">TOI À</span><br>FOND.</h1>
+    <p class="hero-desc">La plateforme de quiz compétitif du CFA Villemendeur. Défie tes camarades, gagne des avatars, collectionne les trophées.</p>
+    <div class="hero-cta">
+      <button class="btn btn-primary" onclick="showPage('categories')">🎯 Jouer maintenant</button>
+      <button class="btn btn-outline" onclick="showPage('leaderboard')">🏆 Classement</button>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><div class="hstat-n">250+</div><div class="hstat-l">Questions</div></div>
+      <div class="hstat"><div class="hstat-n">20</div><div class="hstat-l">Catégories</div></div>
+      <div class="hstat"><div class="hstat-n">30</div><div class="hstat-l">Avatars</div></div>
+      <div class="hstat"><div class="hstat-n">40</div><div class="hstat-l">Trophées</div></div>
+    </div>
+    <div class="quick-actions">
+      <div class="qa-btn" onclick="showPage('categories')"><div class="qa-icon">🎮</div><div class="qa-label">Jouer</div><div class="qa-sub">Solo ou multi</div></div>
+      <div class="qa-btn" onclick="showPage('leaderboard')"><div class="qa-icon">🏆</div><div class="qa-label">Classement</div><div class="qa-sub">Top joueurs</div></div>
+      <div class="qa-btn" onclick="showPage('profile')"><div class="qa-icon">👤</div><div class="qa-label">Profil</div><div class="qa-sub">Avatars & XP</div></div>
+      <div class="qa-btn" onclick="openThemePicker()"><div class="qa-icon">🎨</div><div class="qa-label">Thème</div><div class="qa-sub">15 couleurs</div></div>
+      <div class="qa-btn" onclick="openFontPicker()"><div class="qa-icon">𝐀𝐚</div><div class="qa-label">Police</div><div class="qa-sub">Changer le style</div></div>
+      <div class="qa-btn" onclick="toggleMusic()"><div class="qa-icon" id="homeMusIcon">🔇</div><div class="qa-label">Musique</div><div class="qa-sub">Ambiance</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CATEGORIES ═══ -->
+<div class="page" id="page-categories">
+  <div class="page-header">
+    <div class="page-title">🎮 Catégories</div>
+    <input class="cats-search" type="text" placeholder="🔍 Rechercher..." oninput="filterCats(this.value)">
+  </div>
+  <div class="cats-filter">
+    <button class="cf-btn active" onclick="filterCatType('all',this)">Toutes</button>
+    <button class="cf-btn" onclick="filterCatType('commerce',this)">Commerce</button>
+    <button class="cf-btn" onclick="filterCatType('culture',this)">Culture</button>
+    <button class="cf-btn" onclick="filterCatType('langue',this)">Langues</button>
+    <button class="cf-btn" onclick="filterCatType('logique',this)">Logique</button>
+    <button class="cf-btn" onclick="filterCatType('pro',this)">Pro</button>
+  </div>
+  <div class="cats-grid" id="catsGrid"></div>
+</div>
+
+<!-- ═══ LEADERBOARD ═══ -->
+<div class="page" id="page-leaderboard">
+  <div class="page-header"><div class="page-title">🏆 Classement</div></div>
+  <div class="lb-filters" id="lbFilters">
+    <button class="lf-btn active" onclick="filterLB('global',this)">🌍 Global</button>
+    <button class="lf-btn" onclick="filterLB('eleve',this)">🎓 Élèves</button>
+    <button class="lf-btn" onclick="filterLB('formateur',this)">👔 Formateurs</button>
+    <button class="lf-btn" onclick="filterLB('Négociation',this)">Négo</button>
+    <button class="lf-btn" onclick="filterLB('Marketing',this)">Marketing</button>
+    <button class="lf-btn" onclick="filterLB('Anglais',this)">Anglais</button>
+    <button class="lf-btn" onclick="filterLB('Culture Générale',this)">Culture G.</button>
+  </div>
+  <div class="lb-section">
+    <div class="lb-podium" id="lbPodium"></div>
+    <div class="lb-rows" id="lbRows"></div>
+  </div>
+</div>
+
+<!-- ═══ PROFILE ═══ -->
+<div class="page" id="page-profile">
+  <div class="profile-banner">
+    <div class="pav-big" id="pAvBig" onclick="openAvatarPicker()">😊</div>
+    <div class="pinfo">
+      <div class="pname" id="pName">Joueur</div>
+      <div class="pemail" id="pEmail">email</div>
+      <div class="pstats">
+        <div class="ps"><div class="ps-n" id="pScore">0</div><div class="ps-l">Points</div></div>
+        <div class="ps"><div class="ps-n" id="pGames">0</div><div class="ps-l">Parties</div></div>
+        <div class="ps"><div class="ps-n" id="pStreak">0</div><div class="ps-l">Série max</div></div>
+        <div class="ps"><div class="ps-n" id="pRank">#-</div><div class="ps-l">Rang</div></div>
+      </div>
+      <div class="xp-wrap">
+        <div class="xp-lbl"><span id="xpLvl">Niveau 1</span><span id="xpProg">0/300 XP</span></div>
+        <div class="xp-bar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">🧑‍🎨 Mes Avatars</div>
+    <div class="avatars-grid" id="avatarsGrid"></div>
+  </div>
+  <div class="section">
+    <div class="section-title">🏅 Mes Trophées</div>
+    <div class="trophies-grid" id="trophiesGrid"></div>
+  </div>
+</div>
+
+<!-- ═══ QUIZ ═══ -->
+<div class="page" id="page-quiz">
+  <div class="quiz-wrap">
+    <div class="quiz-hud">
+      <div class="hud-left">
+        <div class="badge badge-c1" id="qCatBadge">Cat</div>
+        <div class="badge badge-c2" id="qDiffBadge">Niv</div>
+        <div class="badge badge-gray" id="qNumBadge">Q1/10</div>
+      </div>
+      <div class="timer-wrap">
+        <svg width="58" height="58" viewBox="0 0 58 58">
+          <circle class="t-bg" cx="29" cy="29" r="25"/>
+          <circle class="t-fg" id="timerCircle" cx="29" cy="29" r="25"/>
+        </svg>
+        <div class="t-num" id="timerNum">30</div>
+      </div>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    <div class="q-card">
+      <div class="q-tag" id="qTag">Question 1</div>
+      <div class="q-text" id="qText">Chargement...</div>
+    </div>
+    <div class="ans-grid" id="answers"></div>
+    <div class="feedback" id="feedback">
+      <div class="fb-icon" id="fbIcon">✅</div>
+      <div><div class="fb-title" id="fbTitle">Bonne réponse !</div><div class="fb-desc" id="fbDesc"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ RESULT ═══ -->
+<div class="page" id="page-result">
+  <div class="result-box">
+    <div class="result-trophy" id="rTrophy">🏆</div>
+    <div class="result-title" id="rTitle">BRAVO !</div>
+    <div class="result-sub" id="rSub">Quiz terminé</div>
+    <div class="result-grid">
+      <div class="rstat"><div class="rstat-n" id="rScore">0</div><div class="rstat-l">Points</div></div>
+      <div class="rstat"><div class="rstat-n" id="rCorrect">0/10</div><div class="rstat-l">Bonnes rép.</div></div>
+      <div class="rstat"><div class="rstat-n" id="rRank">#-</div><div class="rstat-l">Classement</div></div>
+    </div>
+    <div class="result-actions">
+      <button class="btn btn-primary btn-full" id="replayBtn">🔄 Rejouer</button>
+      <button class="btn btn-outline btn-full" onclick="showPage('leaderboard')">🏆 Classement</button>
+      <button class="btn btn-outline btn-full" onclick="showPage('categories')">← Catégories</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- THEME -->
+<div class="overlay" id="themeModal">
+  <div class="modal">
+    <div class="modal-title">🎨 Thème</div>
+    <div class="modal-sub">15 combinaisons de couleurs</div>
+    <div class="theme-grid" id="themeGrid"></div>
+    <button class="btn btn-outline btn-full" onclick="closeModal('themeModal')">Fermer</button>
+  </div>
+</div>
+
+<!-- FONT -->
+<div class="overlay" id="fontModal">
+  <div class="modal">
+    <div class="modal-title">𝐀𝐚 Police</div>
+    <div class="modal-sub">Choisis ton style d'écriture</div>
+    <div class="font-grid" id="fontGrid"></div>
+    <button class="btn btn-outline btn-full" onclick="closeModal('fontModal')">Fermer</button>
+  </div>
+</div>
+
+<!-- DIFFICULTY -->
+<div class="overlay" id="diffModal">
+  <div class="modal">
+    <div class="modal-title" id="diffTitle">Niveau</div>
+    <div class="modal-sub">Catégorie : <span id="diffCat" style="color:var(--c1);font-weight:700;"></span></div>
+    <div class="diff-grid">
+      <div class="diff-btn sel" data-d="1" onclick="selDiff(1)"><div class="diff-icon">🟢</div><div class="diff-name">Débutant</div><div class="diff-pts">25 pts/rép.</div><div class="diff-time">⏱ 30s</div></div>
+      <div class="diff-btn" data-d="2" onclick="selDiff(2)"><div class="diff-icon">🔵</div><div class="diff-name">Intermédiaire</div><div class="diff-pts">50 pts/rép.</div><div class="diff-time">⏱ 25s</div></div>
+      <div class="diff-btn" data-d="3" onclick="selDiff(3)"><div class="diff-icon">🟡</div><div class="diff-name">Avancé</div><div class="diff-pts">80 pts/rép.</div><div class="diff-time">⏱ 20s</div></div>
+      <div class="diff-btn" data-d="4" onclick="selDiff(4)"><div class="diff-icon">🔴</div><div class="diff-name">Expert</div><div class="diff-pts">120 pts/rép.</div><div class="diff-time">⏱ 15s</div></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="startSolo()">⚡ Solo</button>
+      <button class="btn btn-outline" onclick="openMulti()">⚔️ Multijoueur</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('diffModal')">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- AVATAR PICKER -->
+<div class="overlay" id="avatarModal">
+  <div class="modal">
+    <div class="modal-title">🧑‍🎨 Choisir un avatar</div>
+    <div class="modal-sub">Appuie sur un avatar débloqué pour l'équiper</div>
+    <div class="avatars-grid" id="avatarPickerGrid"></div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-outline btn-full" onclick="closeModal('avatarModal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MULTI -->
+<div class="overlay" id="multiModal">
+  <div class="modal">
+    <div class="modal-title">⚔️ Multijoueur</div>
+    <div class="modal-sub">Battle jusqu'à 4 joueurs !</div>
+    <div id="mStep1">
+      <div class="multi-opt" onclick="createRoom()"><span style="font-size:28px;">➕</span><div><div style="font-weight:800;font-size:15px;">Créer une salle</div><div style="font-size:12px;color:var(--muted);">Génère un code à partager</div></div></div>
+      <div class="multi-opt" onclick="showJoin()"><span style="font-size:28px;">🔑</span><div><div style="font-weight:800;font-size:15px;">Rejoindre</div><div style="font-size:12px;color:var(--muted);">Entre le code d'un ami</div></div></div>
+      <button class="btn btn-outline btn-full" onclick="closeModal('multiModal')">← Retour</button>
+    </div>
+    <div id="mStep2" style="display:none">
+      <div style="text-align:center;font-size:13px;color:var(--muted);">Code à partager :</div>
+      <div class="code-display" id="roomCode">----</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Joueurs (<span id="pCount">1</span>/4) :</div>
+      <div id="waitPlayers"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-primary" onclick="launchMulti()">🚀 Lancer</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('multiModal')">✕</button>
+      </div>
+    </div>
+    <div id="mStep3" style="display:none">
+      <div class="field"><label>Code de la salle</label><input type="text" id="joinCode" placeholder="1234" maxlength="4" style="text-align:center;font-size:28px;letter-spacing:8px;font-family:var(--font-display);"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="joinRoom()">Rejoindre →</button>
+        <button class="btn btn-outline btn-sm" onclick="showMStep1()">←</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js" crossorigin="anonymous"></script>
+<script>
+// ══════════════════════════════════════
+// SUPABASE
+// ══════════════════════════════════════
+const SURL='https://mdxstqrmizlfjjarxhxu.supabase.co';
+const SKEY='sb_publishable_O3lSeCR1kiTttbOOSlerHQ_zmbZ2vC1';
+const sb=supabase.createClient(SURL,SKEY);
+
+// ══════════════════════════════════════
+// AVATARS (20 niveaux + 10 secrets)
+// ══════════════════════════════════════
+const LEVEL_AVATARS=[
+  {id:'av1',emoji:'😊',name:'Souriant',level:1},
+  {id:'av2',emoji:'😎',name:'Cool',level:2},
+  {id:'av3',emoji:'🧠',name:'Cerveau',level:3},
+  {id:'av4',emoji:'⚡',name:'Éclair',level:4},
+  {id:'av5',emoji:'🔥',name:'Flamme',level:5},
+  {id:'av6',emoji:'🦁',name:'Lion',level:6},
+  {id:'av7',emoji:'🐺',name:'Loup',level:7},
+  {id:'av8',emoji:'🦊',name:'Renard',level:8},
+  {id:'av9',emoji:'🐉',name:'Dragon',level:9},
+  {id:'av10',emoji:'🦅',name:'Aigle',level:10},
+  {id:'av11',emoji:'🏆',name:'Champion',level:11},
+  {id:'av12',emoji:'💎',name:'Diamant',level:12},
+  {id:'av13',emoji:'⚔️',name:'Guerrier',level:13},
+  {id:'av14',emoji:'🧙',name:'Mage',level:14},
+  {id:'av15',emoji:'👑',name:'Roi',level:15},
+  {id:'av16',emoji:'🌟',name:'Étoile',level:16},
+  {id:'av17',emoji:'🚀',name:'Fusée',level:17},
+  {id:'av18',emoji:'💫',name:'Comète',level:18},
+  {id:'av19',emoji:'🌌',name:'Galaxie',level:19},
+  {id:'av20',emoji:'🔮',name:'Oracle',level:20},
+];
+
+// SECRET QUESTS — only admin knows triggers
+const SECRET_AVATARS=[
+  {id:'sec1',emoji:'🤡',name:'???',secret:true},
+  {id:'sec2',emoji:'👾',name:'???',secret:true},
+  {id:'sec3',emoji:'🎭',name:'???',secret:true},
+  {id:'sec4',emoji:'🦄',name:'???',secret:true},
+  {id:'sec5',emoji:'🌈',name:'???',secret:true},
+  {id:'sec6',emoji:'🍕',name:'???',secret:true},
+  {id:'sec7',emoji:'🎪',name:'???',secret:true},
+  {id:'sec8',emoji:'🧿',name:'???',secret:true},
+  {id:'sec9',emoji:'🪄',name:'???',secret:true},
+  {id:'sec10',emoji:'👁️',name:'???',secret:true},
+];
+
+// SECRET TRIGGERS (hidden in logic — admin only reference)
+// sec1: 3 wrong answers in a row in same quiz
+// sec2: type "bouziatslp" as text anywhere in quiz answer path (special check)
+// sec3: play at exactly midnight (00:00-00:05)
+// sec4: complete a full quiz with score=0 (all wrong)
+// sec5: play 5 different categories in one session
+// sec6: finish a quiz in under 60 seconds total
+// sec7: get a streak of 5 correct in a row
+// sec8: play on a Sunday
+// sec9: complete all 4 difficulty levels in one category
+// sec10: reach level 10
+
+// ══════════════════════════════════════
+// TROPHIES
+// ══════════════════════════════════════
+const TROPHIES=[
+  // BRONZE (15)
+  {id:'t1',tier:'bronze',color:'#CD7F32',icon:'🎯',name:'Premier pas',desc:'Terminer son premier quiz',check:(p)=>p.games_played>=1},
+  {id:'t2',tier:'bronze',color:'#CD7F32',icon:'📚',name:'Apprenti',desc:'Jouer 5 parties',check:(p)=>p.games_played>=5},
+  {id:'t3',tier:'bronze',color:'#CD7F32',icon:'💪',name:'Persévérant',desc:'Jouer 10 parties',check:(p)=>p.games_played>=10},
+  {id:'t4',tier:'bronze',color:'#CD7F32',icon:'🎓',name:'Étudiant',desc:'Atteindre 500 points au total',check:(p)=>p.total_score>=500},
+  {id:'t5',tier:'bronze',color:'#CD7F32',icon:'🔥',name:'En feu',desc:'Faire une série de 3 bonnes réponses',check:(p)=>p.best_streak>=3},
+  {id:'t6',tier:'bronze',color:'#CD7F32',icon:'🤝',name:'Commercial',desc:'Compléter un quiz Négociation',check:(p,cats)=>cats&&cats.includes('Négociation')},
+  {id:'t7',tier:'bronze',color:'#CD7F32',icon:'📣',name:'Marketeur',desc:'Compléter un quiz Marketing',check:(p,cats)=>cats&&cats.includes('Marketing')},
+  {id:'t8',tier:'bronze',color:'#CD7F32',icon:'🌍',name:'Curieux',desc:'Compléter un quiz Culture Générale',check:(p,cats)=>cats&&cats.includes('Culture Générale')},
+  {id:'t9',tier:'bronze',color:'#CD7F32',icon:'🇬🇧',name:'English speaker',desc:'Compléter un quiz Anglais',check:(p,cats)=>cats&&cats.includes('Anglais')},
+  {id:'t10',tier:'bronze',color:'#CD7F32',icon:'🧮',name:'Logicien',desc:'Compléter un quiz Logique',check:(p,cats)=>cats&&cats.includes('Logique & Maths')},
+  {id:'t11',tier:'bronze',color:'#CD7F32',icon:'👔',name:'Manager',desc:'Compléter un quiz Management',check:(p,cats)=>cats&&cats.includes('Management')},
+  {id:'t12',tier:'bronze',color:'#CD7F32',icon:'⚖️',name:'Juriste',desc:'Compléter un quiz Droit / CEJM',check:(p,cats)=>cats&&(cats.includes('Droit')||cats.includes('CEJM'))},
+  {id:'t13',tier:'bronze',color:'#CD7F32',icon:'✨',name:'Animateur',desc:'Compléter un quiz Dynamisation',check:(p,cats)=>cats&&cats.includes('Dynamisation')},
+  {id:'t14',tier:'bronze',color:'#CD7F32',icon:'🏪',name:'Commerçant',desc:'Compléter un quiz Espace Commercial',check:(p,cats)=>cats&&cats.includes('Espace Commercial')},
+  {id:'t15',tier:'bronze',color:'#CD7F32',icon:'📊',name:'Gestionnaire',desc:'Compléter un quiz Gestion Commerciale',check:(p,cats)=>cats&&cats.includes('Gestion Commerciale')},
+  // SILVER (12)
+  {id:'t16',tier:'silver',color:'#C0C0C0',icon:'🥈',name:'Régulier',desc:'Jouer 25 parties',check:(p)=>p.games_played>=25},
+  {id:'t17',tier:'silver',color:'#C0C0C0',icon:'💡',name:'Expert Commerce',desc:'Compléter tous les quiz Commerce',check:(p,cats)=>cats&&['Négociation','Marketing','Relation Client','Gestion Commerciale','Dynamisation','Adaptation Offre','Espace Commercial'].every(c=>cats.includes(c))},
+  {id:'t18',tier:'silver',color:'#C0C0C0',icon:'🌐',name:'Polyglotte',desc:'Compléter Anglais ET Espagnol',check:(p,cats)=>cats&&cats.includes('Anglais')&&cats.includes('Espagnol')},
+  {id:'t19',tier:'silver',color:'#C0C0C0',icon:'🎯',name:'Tireur d\'élite',desc:'Faire 10 bonnes réponses d\'affilée',check:(p)=>p.best_streak>=10},
+  {id:'t20',tier:'silver',color:'#C0C0C0',icon:'📈',name:'Économiste',desc:'Atteindre 5000 points',check:(p)=>p.total_score>=5000},
+  {id:'t21',tier:'silver',color:'#C0C0C0',icon:'🧑‍💼',name:'Pro confirmé',desc:'Compléter tous les quiz Pro',check:(p,cats)=>cats&&['Management','Droit','Économie','Informatique','Communication','RH','CEJM'].every(c=>cats.includes(c))},
+  {id:'t22',tier:'silver',color:'#C0C0C0',icon:'🧠',name:'Intellectuel',desc:'Compléter Culture Générale + Logique',check:(p,cats)=>cats&&cats.includes('Culture Générale')&&cats.includes('Logique & Maths')},
+  {id:'t23',tier:'silver',color:'#C0C0C0',icon:'⚔️',name:'Gladiateur',desc:'Jouer 5 parties en multijoueur',check:(p)=>p.multi_games>=5},
+  {id:'t24',tier:'silver',color:'#C0C0C0',icon:'🏅',name:'Niveau 5',desc:'Atteindre le niveau 5',check:(p)=>Math.floor((p.xp||0)/300)+1>=5},
+  {id:'t25',tier:'silver',color:'#C0C0C0',icon:'🔄',name:'Infatigable',desc:'Jouer 50 parties',check:(p)=>p.games_played>=50},
+  {id:'t26',tier:'silver',color:'#C0C0C0',icon:'🌱',name:'Développement durable',desc:'Compléter un quiz Développement Durable',check:(p,cats)=>cats&&cats.includes('Développement Durable')},
+  {id:'t27',tier:'silver',color:'#C0C0C0',icon:'🧪',name:'Chercheur',desc:'Essayer toutes les catégories disponibles',check:(p,cats)=>cats&&cats.length>=15},
+  // GOLD (8)
+  {id:'t28',tier:'gold',color:'#FFD700',icon:'🥇',name:'Champion',desc:'Atteindre le niveau 10',check:(p)=>Math.floor((p.xp||0)/300)+1>=10},
+  {id:'t29',tier:'gold',color:'#FFD700',icon:'💰',name:'Millionnaire',desc:'Atteindre 10000 points',check:(p)=>p.total_score>=10000},
+  {id:'t30',tier:'gold',color:'#FFD700',icon:'🦁',name:'Roi de l\'arène',desc:'Être classé #1 au classement global',check:(p)=>p.rank===1},
+  {id:'t31',tier:'gold',color:'#FFD700',icon:'🎖️',name:'Toutes catégories',desc:'Jouer dans les 20 catégories',check:(p,cats)=>cats&&cats.length>=20},
+  {id:'t32',tier:'gold',color:'#FFD700',icon:'⚡',name:'Speed runner',desc:'Faire un quiz parfait (10/10)',check:(p)=>p.perfect_games>=1},
+  {id:'t33',tier:'gold',color:'#FFD700',icon:'🔥',name:'Série légendaire',desc:'Faire une série de 20 bonnes réponses',check:(p)=>p.best_streak>=20},
+  {id:'t34',tier:'gold',color:'#FFD700',icon:'🏆',name:'Niveau 15',desc:'Atteindre le niveau 15',check:(p)=>Math.floor((p.xp||0)/300)+1>=15},
+  {id:'t35',tier:'gold',color:'#FFD700',icon:'👑',name:'Légende du CFA',desc:'Jouer 100 parties',check:(p)=>p.games_played>=100},
+  // PLATINE (5)
+  {id:'t36',tier:'platinum',color:'#E5E4E2',icon:'💎',name:'Maître absolu',desc:'Atteindre le niveau 20',check:(p)=>Math.floor((p.xp||0)/300)+1>=20},
+  {id:'t37',tier:'platinum',color:'#E5E4E2',icon:'🌌',name:'Transcendance',desc:'Atteindre 50000 points',check:(p)=>p.total_score>=50000},
+  {id:'t38',tier:'platinum',color:'#E5E4E2',icon:'🔮',name:'Oracle',desc:'Débloquer tous les avatars secrets',check:(p)=>p.secret_avatars>=10},
+  {id:'t39',tier:'platinum',color:'#E5E4E2',icon:'⚜️',name:'Platine',desc:'Obtenir tous les autres trophées',check:(p)=>p.trophy_count>=39},
+  {id:'t40',tier:'platinum',color:'#E5E4E2',icon:'🪐',name:'Dieu de l\'arène',desc:'Le trophée ultime — pour les vrais',check:(p)=>p.total_score>=100000},
+];
+
+// ══════════════════════════════════════
+// CATEGORIES
+// ══════════════════════════════════════
+const CATS=[
+  {id:'Négociation',icon:'🤝',type:'commerce',desc:'Techniques de vente et entretien commercial'},
+  {id:'Marketing',icon:'📣',type:'commerce',desc:'Mix marketing, digital, stratégie'},
+  {id:'Relation Client',icon:'👤',type:'commerce',desc:'CRM, fidélisation, parcours client'},
+  {id:'Gestion Commerciale',icon:'📊',type:'commerce',desc:'Marges, TVA, facturation'},
+  {id:'Management',icon:'👔',type:'pro',desc:'Leadership, équipe, motivation'},
+  {id:'Droit',icon:'⚖️',type:'pro',desc:'Droit du travail, contrats, sociétés'},
+  {id:'Économie',icon:'📈',type:'pro',desc:'Macro/micro économie, marchés'},
+  {id:'Culture Générale',icon:'🌍',type:'culture',desc:'Histoire, géographie, sciences'},
+  {id:'Anglais',icon:'🇬🇧',type:'langue',desc:'Business English, vocabulaire pro'},
+  {id:'Logique & Maths',icon:'🧮',type:'logique',desc:'Calcul mental, suites, probabilités'},
+  {id:'Informatique',icon:'💻',type:'pro',desc:'Outils numériques, sécurité, web'},
+  {id:'Dynamisation',icon:'✨',type:'commerce',desc:'Animation commerciale, merchandising, PLV'},
+  {id:'Adaptation Offre',icon:'🔄',type:'commerce',desc:'Assortiment, positionnement, cycle de vie'},
+  {id:'Espace Commercial',icon:'🏪',type:'commerce',desc:'Agencement, implantation, zone de chalandise'},
+  {id:'CEJM',icon:'📚',type:'pro',desc:'Culture économique, juridique et managériale'},
+  {id:'Communication',icon:'💬',type:'pro',desc:'Communication professionnelle, prise de parole'},
+  {id:'RH',icon:'🧑‍💼',type:'pro',desc:'Recrutement, paie, droit social'},
+  {id:'Espagnol',icon:'🇪🇸',type:'langue',desc:'Vocabulaire commercial espagnol'},
+  {id:'Psychologie Vente',icon:'🧠',type:'commerce',desc:'Biais cognitifs, persuasion, neurovente'},
+  {id:'Développement Durable',icon:'🌱',type:'culture',desc:'RSE, écologie, développement responsable'},
+];
+
+// ══════════════════════════════════════
+// QUESTIONS
+// ══════════════════════════════════════
+const QB={
+  "Négociation":{
+    1:[
+      {q:"Quelle est la première étape d'un entretien de vente ?",a:["Prise de contact","Argumentation","Traitement des objections","Conclusion"],c:0,e:"La prise de contact établit la confiance dès le départ."},
+      {q:"Une objection client est avant tout...",a:["Un refus définitif","Un frein à l'achat à surmonter","Une demande de remise","Une erreur du vendeur"],c:1,e:"L'objection est une opportunité de rassurer le client."},
+      {q:"SONCAS — que signifie le S ?",a:["Sympathie","Sécurité","Solvabilité","Service"],c:1,e:"SONCAS : Sécurité, Orgueil, Nouveauté, Confort, Argent, Sympathie."},
+      {q:"Le 'closing' en vente désigne :",a:["L'ouverture","La finalisation de la vente","L'analyse du besoin","La présentation produit"],c:1,e:"Le closing = conclure la vente."},
+      {q:"L'écoute active consiste principalement à :",a:["Parler plus que le client","Reformuler et poser des questions","Proposer rapidement","Interrompre pour convaincre"],c:1,e:"Reformuler montre qu'on écoute et aide à mieux comprendre."},
+      {q:"SPIN Selling — que signifie le I ?",a:["Intérêt","Implication","Investissement","Information"],c:1,e:"SPIN = Situation, Problème, Implication, Need-payoff."},
+      {q:"Un prospect chaud est :",a:["Difficile à convaincre","Très intéressé par l'achat","Un ancien client","Un client indécis"],c:1,e:"Un prospect chaud = fort intérêt, signal d'achat imminent."},
+      {q:"Les 4C en entretien de vente :",a:["Contact, Comprendre, Convaincre, Conclure","Client, Coût, Canal, Communication","Clarté, Confiance, Conviction, Closing","Confort, Crédit, Contact, Couleur"],c:0,e:"Les 4C structurent logiquement l'entretien commercial."},
+      {q:"Une concession en négociation doit être :",a:["Gratuite et immédiate","Conditionnelle et valorisée","Systématique","Cachée"],c:1,e:"Toute concession doit obtenir quelque chose en retour."},
+      {q:"La vente additionnelle consiste à :",a:["Revendre à un ancien client","Proposer un produit complémentaire","Vendre avec remise","Vendre sans rendez-vous"],c:1,e:"Vente additionnelle = augmenter le panier moyen."},
+    ],
+    2:[
+      {q:"La méthode CAB signifie :",a:["Client, Argent, Besoin","Caractéristique, Avantage, Bénéfice","Contact, Action, Bilan","Conseil, Achat, Bon"],c:1,e:"CAB = transformer les caractéristiques en bénéfices client."},
+      {q:"Le BATNA en négociation est :",a:["Une technique de closing","La meilleure alternative si pas d'accord","Un type de contrat","Une méthode de prospection"],c:1,e:"BATNA = Best Alternative To a Negotiated Agreement."},
+      {q:"Le taux de transformation mesure :",a:["Le nombre de visites","La proportion de prospects devenus clients","Le CA","La marge"],c:1,e:"Taux de transformation = (clients / prospects) × 100."},
+      {q:"L'objection prix doit être traitée :",a:["En baissant immédiatement","En valorisant la valeur du produit","En ignorant l'objection","En proposant un concurrent"],c:1,e:"On traite d'abord la valeur avant de parler prix."},
+      {q:"L'up-selling consiste à :",a:["Vendre un produit complémentaire","Proposer une version supérieure","Faire une remise","Fidéliser le client"],c:1,e:"Up-selling = monter en gamme pour augmenter la valeur."},
+    ],
+    3:[
+      {q:"La technique du 'miroir' consiste à :",a:["Copier les gestes","Répéter les derniers mots du client","Proposer le même prix","Inverser les rôles"],c:1,e:"Répéter les derniers mots pousse le client à développer sa pensée."},
+      {q:"L'effet d'ancrage signifie :",a:["Rester sur ses positions","La première offre influence toutes les suivantes","Ancrer la relation","Fixer un prix plancher"],c:1,e:"La première information donnée sert de référence mentale."},
+      {q:"La négociation raisonnée (Harvard) vise :",a:["Négocier sur les positions","Chercher des intérêts mutuels","Imposer son prix","Éviter le conflit"],c:1,e:"La méthode Harvard cherche un accord gagnant-gagnant."},
+    ],
+    4:[
+      {q:"La ZOPA en négociation est :",a:["Une technique de closing","La zone d'accord possible","Un type d'objection","Un outil CRM"],c:1,e:"ZOPA = Zone Of Possible Agreement."},
+      {q:"La théorie des jeux préconise :",a:["Maximiser ses gains à court terme","Anticiper les réactions adverses","Négocier seul","Éviter les concessions"],c:1,e:"Anticiper les stratégies adverses = approche game theory."},
+    ],
+  },
+  "Culture Générale":{
+    1:[
+      {q:"Capitale de l'Australie ?",a:["Sydney","Melbourne","Canberra","Brisbane"],c:2,e:"Canberra est la capitale de l'Australie depuis 1913."},
+      {q:"Combien d'os dans le corps humain adulte ?",a:["206","212","198","220"],c:0,e:"Le corps humain adulte compte 206 os."},
+      {q:"Qui a peint la Joconde ?",a:["Michel-Ange","Raphaël","Léonard de Vinci","Botticelli"],c:2,e:"La Joconde peinte par Léonard de Vinci."},
+      {q:"Révolution française en quelle année ?",a:["1789","1776","1804","1815"],c:0,e:"La Révolution française a débuté en 1789."},
+      {q:"Plus grand océan du monde ?",a:["Atlantique","Indien","Arctique","Pacifique"],c:3,e:"L'océan Pacifique couvre environ 165 millions de km²."},
+      {q:"Combien de pays dans l'UE ?",a:["25","27","30","32"],c:1,e:"L'UE compte 27 membres depuis le Brexit en 2020."},
+      {q:"Planète la plus proche du Soleil ?",a:["Venus","Mars","Mercure","Terre"],c:2,e:"Mercure est la planète la plus proche du Soleil."},
+      {q:"Qui a écrit 'Les Misérables' ?",a:["Zola","Flaubert","Victor Hugo","Balzac"],c:2,e:"Victor Hugo a publié Les Misérables en 1862."},
+      {q:"Formule chimique de l'eau ?",a:["CO2","H2O","NaCl","O2"],c:1,e:"H2O : 2 hydrogène + 1 oxygène."},
+      {q:"Vainqueur Coupe du Monde 2018 ?",a:["Brésil","Allemagne","France","Argentine"],c:2,e:"La France a battu la Croatie 4-2 en finale."},
+    ],
+  },
+  "Anglais":{
+    1:[
+      {q:"'Customer' means ?",a:["Employé","Client","Concurrent","Fournisseur"],c:1,e:"Customer = client."},
+      {q:"'A deadline' is ?",a:["Une ligne directe","Une date limite","Un objectif","Un délai de livraison"],c:1,e:"A deadline = une date limite."},
+      {q:"'Follow up' means ?",a:["Suivre vers le haut","Faire un suivi/relancer","Abandonner","Annuler"],c:1,e:"To follow up = relancer."},
+      {q:"'Best regards' = ?",a:["Cordialement","À bientôt","Avec regrets","Sincèrement"],c:0,e:"Best regards = Cordialement."},
+      {q:"B2B stands for ?",a:["Back to Business","Business to Business","Best to Buy","Budget to Budget"],c:1,e:"B2B = Business to Business."},
+      {q:"'ASAP' means ?",a:["As Soon As Possible","A Simple And Professional","All Staff Are Present","As Seen And Planned"],c:0,e:"ASAP = As Soon As Possible."},
+      {q:"'Outstanding invoice' means ?",a:["Excellente facture","Facture impayée","Nouvelle facture","Facture annulée"],c:1,e:"Outstanding = en attente de paiement."},
+      {q:"'Please find attached' means ?",a:["On demande un doc","On joint un doc à l'email","On reporte une réunion","On confirme un RDV"],c:1,e:"Please find attached = veuillez trouver ci-joint."},
+      {q:"A 'quotation' in business is ?",a:["Une citation","Un devis","Un bon de commande","Une facture"],c:1,e:"A quotation = un devis."},
+      {q:"'To schedule' means ?",a:["Annuler","Planifier, organiser","Retarder","Confirmer"],c:1,e:"To schedule = planifier."},
+    ],
+  },
+  "Logique & Maths":{
+    1:[
+      {q:"2 ouvriers font un mur en 4 jours, 4 ouvriers le font en ?",a:["8 jours","4 jours","2 jours","1 jour"],c:2,e:"Inversement proportionnel : 2×4=4×x → x=2 jours."},
+      {q:"Suite : 2, 4, 8, 16, ... ?",a:["24","28","32","36"],c:2,e:"Suite géométrique ×2 : 16×2=32."},
+      {q:"80€ avec 25% de remise ?",a:["55€","60€","65€","70€"],c:1,e:"80×0,75=60€."},
+      {q:"Suite logique : A, C, E, G, ... ?",a:["H","I","J","K"],c:1,e:"Lettres impaires : I vient après G."},
+      {q:"Train à 120 km/h en 90 min parcourt ?",a:["120 km","150 km","180 km","200 km"],c:2,e:"120×1,5=180 km."},
+      {q:"Suite de Fibonacci : 1,1,2,3,5,8, ... ?",a:["11","12","13","14"],c:2,e:"5+8=13."},
+      {q:"Si A>B et B>C, alors ?",a:["C>A","A>C","A=C","On ne peut pas conclure"],c:1,e:"Par transitivité : A>B>C donc A>C."},
+      {q:"30% de 200 = ?",a:["30","50","60","70"],c:2,e:"200×0,30=60."},
+      {q:"De 50€ à 75€, hausse de ?",a:["25%","40%","50%","75%"],c:2,e:"(75-50)/50×100=50%."},
+      {q:"Quelle figure a 6 faces ?",a:["Tétraèdre","Octaèdre","Cube","Pyramide"],c:2,e:"Un cube possède 6 faces carrées."},
+    ],
+  },
+  "Dynamisation":{
+    1:[
+      {q:"La PLV signifie :",a:["Publicité Légale et Visuelle","Publicité sur le Lieu de Vente","Plan de Lancement des Ventes","Présentation des Lignes de Vente"],c:1,e:"PLV = outils de communication physique en point de vente."},
+      {q:"Le merchandising vise à :",a:["Réduire les stocks","Optimiser la présentation des produits","Former les vendeurs","Négocier avec les fournisseurs"],c:1,e:"Le merchandising maximise les ventes par la mise en valeur produit."},
+      {q:"Une animation commerciale sert à :",a:["Gérer les conflits","Dynamiser les ventes et attirer les clients","Réduire les charges","Former le personnel"],c:1,e:"Animations = opérations ponctuelles pour booster trafic et ventes."},
+      {q:"Le facing en grande distribution désigne :",a:["La largeur visible d'un produit en rayon","Le stock en réserve","Le prix d'achat","Le linéaire total"],c:0,e:"Facing = nombre d'unités visibles de face."},
+      {q:"La zone chaude d'un magasin est :",a:["La zone de stockage","La zone naturellement la plus fréquentée","La zone climatisée","La zone de caisse"],c:1,e:"Zone chaude = zone à fort trafic."},
+      {q:"Un stop rayon est :",a:["Un arrêt de la vente","Un signal visuel fixé en tête de gondole","Un type de remise","Un outil de gestion des stocks"],c:1,e:"Le stop rayon attire l'œil du client."},
+      {q:"Le taux de rupture mesure :",a:["La casse des produits","La fréquence des ruptures de stock","Le taux de retour client","La marge nette"],c:1,e:"Un taux de rupture élevé = perte de CA et insatisfaction."},
+      {q:"L'ILV signifie :",a:["Information sur le Lieu de Vente","Inventaire des Lignes de Ventes","Indicateur de Livraison Variable","Implantation du Linéaire de Vente"],c:0,e:"ILV = information client sur le lieu de vente."},
+      {q:"Une tête de gondole est :",a:["Le chef de rayon","L'extrémité d'un rayon, très visible","Le produit le plus vendu","Une promotion en ligne"],c:1,e:"La tête de gondole est l'emplacement le plus stratégique."},
+      {q:"Le planogramme est :",a:["Un plan de formation","Un schéma d'implantation des produits en rayon","Un indicateur de performance","Un outil de gestion RH"],c:1,e:"Le planogramme guide l'organisation précise des produits."},
+    ],
+  },
+  "CEJM":{
+    1:[
+      {q:"Le SMIC est :",a:["Un salaire maximum","Un salaire minimum légal","Une prime","Une cotisation"],c:1,e:"SMIC = Salaire Minimum Interprofessionnel de Croissance."},
+      {q:"L'inflation désigne :",a:["La hausse des salaires","La hausse générale et durable des prix","La baisse du chômage","La croissance du PIB"],c:1,e:"L'inflation réduit le pouvoir d'achat."},
+      {q:"Le PIB mesure :",a:["Les exportations","La richesse créée par un pays en un an","Les dépenses publiques","Le niveau des prix"],c:1,e:"PIB = somme des valeurs ajoutées créées sur le territoire."},
+      {q:"La RSE signifie :",a:["Réseau Social d'Entreprise","Responsabilité Sociétale des Entreprises","Résultats, Stratégie, Évaluation","Registre Social et Économique"],c:1,e:"RSE = engagement volontaire des entreprises."},
+      {q:"Une SARL est caractérisée par :",a:["Responsabilité illimitée","Responsabilité limitée aux apports","Un seul associé max","L'absence de capital"],c:1,e:"SARL = Société à Responsabilité Limitée."},
+      {q:"Le droit de la concurrence interdit :",a:["Les remises commerciales","Les ententes entre concurrents","Les publicités comparatives","Les franchises"],c:1,e:"Les ententes anticoncurrentielles faussent le marché."},
+      {q:"La convention collective définit :",a:["Le règlement intérieur","Les règles spécifiques à un secteur professionnel","Les horaires uniquement","Le salaire du PDG"],c:1,e:"La convention collective complète le Code du travail."},
+      {q:"Un monopole est :",a:["Plusieurs vendeurs","Un seul vendeur dominant","Une entente illégale","Un marché sans concurrence"],c:1,e:"Monopole = 1 seul offreur face à de nombreux acheteurs."},
+      {q:"Le développement durable repose sur :",a:["2 piliers","3 piliers","4 piliers","5 piliers"],c:1,e:"Économique, Social, Environnemental."},
+      {q:"CDI peut être rompu par :",a:["Le salarié uniquement","L'employeur uniquement","Les deux parties selon la loi","Personne"],c:2,e:"CDI : démission, licenciement, rupture conventionnelle..."},
+    ],
+  },
+  "Management":{
+    1:[
+      {q:"Le management participatif implique :",a:["Décisions uniquement par le chef","Implication des collaborateurs","Travail individuel uniquement","Contrôle strict"],c:1,e:"Le management participatif valorise l'implication de l'équipe."},
+      {q:"Pyramide de Maslow — ordre des besoins :",a:["Du plus complexe au plus simple","Du plus simple au plus complexe","Alphabétique","Par coût"],c:1,e:"Besoins physiologiques → sécurité → appartenance → estime → accomplissement."},
+      {q:"SMART signifie :",a:["Simple, Mesurable, Aléatoire, Rapide, Total","Spécifique, Mesurable, Atteignable, Réaliste, Temporel","Significatif, Motivant, Agréable, Raisonnable, Testé","Standard, Modifiable, Agile, Récurrent, Traçable"],c:1,e:"SMART = critères de qualité d'un objectif efficace."},
+      {q:"Le leadership transformationnel se caractérise par :",a:["La peur et la contrainte","L'inspiration et la vision","Le contrôle strict","Les primes financières"],c:1,e:"Le leader transformationnel inspire, motive et donne du sens."},
+      {q:"KPI signifie :",a:["Key Performance Indicator","Knowledge Process Integration","Key Partner Information","Knowledge Planning Index"],c:0,e:"KPI = indicateur clé de performance."},
+      {q:"Le turn-over mesure :",a:["Le CA","Le taux de renouvellement du personnel","La productivité","La satisfaction client"],c:1,e:"Turn-over élevé = signal d'un problème managérial."},
+      {q:"La délégation c'est :",a:["Abandonner ses responsabilités","Confier une tâche avec les moyens nécessaires","Tout faire soi-même","Externaliser"],c:1,e:"Déléguer = confier + accompagner."},
+      {q:"Le management directif convient surtout :",a:["Aux équipes expérimentées","Aux situations d'urgence ou débutants","En période calme","Pour les projets créatifs"],c:1,e:"Style directif : clair, rapide, adapté aux crises."},
+      {q:"Un manager de proximité est :",a:["Un directeur général","Un chef d'équipe au contact direct des employés","Un consultant externe","Un actionnaire"],c:1,e:"Il anime, motive et coordonne au quotidien."},
+      {q:"Une réunion efficace doit :",a:["Durer le plus longtemps possible","Avoir un ordre du jour clair","Inclure toute l'entreprise","Être improvisée"],c:1,e:"Un ordre du jour précis = réunion productive."},
+    ],
+  },
+  "Marketing":{
+    1:[
+      {q:"Les 4P du marketing mix sont :",a:["Prix, Produit, Place, Promotion","Profit, Part, Pub, Prix","Plan, Produit, Pub, Prix","Part, Positionnement, Prix, Pub"],c:0,e:"Product, Price, Place, Promotion = les 4P de McCarthy."},
+      {q:"Le positionnement d'une marque, c'est :",a:["Son prix de vente","La place qu'elle occupe dans l'esprit du consommateur","Son réseau de distribution","Son budget publicitaire"],c:1,e:"Le positionnement = image souhaitée dans la tête du client."},
+      {q:"Un marché est dit 'oligopolistique' quand :",a:["Il y a beaucoup d'offreurs","Quelques grands offreurs dominent","Il n'y a qu'un vendeur","Les prix sont libres"],c:1,e:"Oligopole = peu de vendeurs puissants face à de nombreux acheteurs."},
+      {q:"Le cycle de vie d'un produit comprend :",a:["Lancement, croissance, maturité, déclin","Idée, test, vente, fin","Création, production, vente, SAV","Étude, proto, série, arrêt"],c:0,e:"Les 4 phases : lancement → croissance → maturité → déclin."},
+      {q:"Le taux de notoriété mesure :",a:["Les ventes d'une marque","La part du public qui connaît une marque","Le nombre de clients fidèles","Le CA publicitaire"],c:1,e:"Notoriété = % de personnes qui connaissent spontanément la marque."},
+      {q:"Le marketing viral repose sur :",a:["La publicité TV","Le bouche-à-oreille et le partage","Les promotions en magasin","Le mailing postal"],c:1,e:"Le marketing viral se propage comme un virus via le partage."},
+      {q:"Une étude de marché qualitative utilise :",a:["Des sondages à grande échelle","Des entretiens et focus groups","Des données de vente","Des statistiques nationales"],c:1,e:"Qualitatif = comprendre en profondeur, pas mesurer en quantité."},
+      {q:"Le prix d'écrémage consiste à :",a:["Vendre très bon marché au départ","Fixer un prix élevé au lancement puis baisser","Aligner le prix sur les concurrents","Vendre à perte"],c:1,e:"Écrémage = cibler les early adopters prêts à payer cher."},
+      {q:"Le CRM signifie :",a:["Coût de Revient Moyen","Customer Relationship Management","Chiffre de Rentabilité Maximum","Contrôle de Résultat Marketing"],c:1,e:"CRM = gestion de la relation client."},
+      {q:"Un persona en marketing est :",a:["Un acteur dans une pub","Un profil fictif représentant le client idéal","Un logiciel de vente","Un type de promotion"],c:1,e:"Le persona représente un archétype de client cible."},
+    ],
+    2:[
+      {q:"Le NPS (Net Promoter Score) mesure :",a:["Le nombre de ventes","La satisfaction et la recommandation client","Le chiffre d'affaires net","La notoriété de marque"],c:1,e:"NPS = % promoteurs - % détracteurs. Mesure la fidélité client."},
+      {q:"Le marketing automation sert à :",a:["Automatiser les processus de fabrication","Automatiser les actions marketing selon le comportement client","Gérer les stocks automatiquement","Recruter automatiquement"],c:1,e:"Marketing automation = scénarios déclenchés par les actions client."},
+      {q:"Le taux de conversion mesure :",a:["La croissance des ventes","Le % de visiteurs qui réalisent l'action souhaitée","La satisfaction client","Le coût par clic"],c:1,e:"Conversion = transformer un visiteur en acheteur."},
+      {q:"Le content marketing consiste à :",a:["Payer pour de la publicité","Créer du contenu utile pour attirer des clients","Vendre des contenus numériques","Gérer les médias sociaux"],c:1,e:"Content marketing = attirer naturellement grâce à des contenus de valeur."},
+      {q:"La segmentation RFM classe les clients selon :",a:["Rentabilité, Fréquence, Marge","Récence, Fréquence, Montant","Région, Fidélité, Motivation","Risque, Fréquence, Marché"],c:1,e:"RFM = Récence d'achat, Fréquence, Montant dépensé."},
+    ],
+    3:[
+      {q:"L'inbound marketing vise à :",a:["Aller chercher le client par la publicité","Attirer le client grâce à du contenu pertinent","Faire du démarchage téléphonique","Pousser le produit par la force de vente"],c:1,e:"Inbound = faire venir le client à soi naturellement."},
+      {q:"Le SEM (Search Engine Marketing) inclut :",a:["SEO uniquement","SEO + SEA (liens sponsorisés)","Uniquement les réseaux sociaux","Les emailings"],c:1,e:"SEM = référencement naturel (SEO) + référencement payant (SEA)."},
+      {q:"La carte perceptuelle représente :",a:["Le parcours client","Le positionnement relatif des marques selon 2 axes","L'organisation de l'entreprise","Le plan de communication"],c:1,e:"La carte perceptuelle visualise comment les marques sont perçues."},
+    ],
+    4:[
+      {q:"Le yield management optimise :",a:["Les coûts de production","Le revenu en ajustant les prix selon la demande","La qualité du produit","Les délais de livraison"],c:1,e:"Yield management = prix dynamiques pour maximiser le revenu."},
+      {q:"Le modèle STP signifie :",a:["Stratégie, Tactique, Plan","Segmentation, Targeting, Positioning","Service, Territoire, Prix","Sélection, Test, Pilotage"],c:1,e:"STP = segmenter le marché, cibler, positionner l'offre."},
+    ],
+  },
+  "Relation Client":{
+    1:[
+      {q:"La fidélisation client coûte :",a:["Plus cher que la prospection","Moins cher que la prospection","Le même prix","Dépend du secteur"],c:1,e:"Fidéliser coûte 5 à 7 fois moins cher qu'acquérir un nouveau client."},
+      {q:"Le parcours client désigne :",a:["L'itinéraire géographique du client","L'ensemble des étapes vécues par le client avec la marque","Le temps d'attente en caisse","Le trajet entre domicile et magasin"],c:1,e:"Parcours client = toutes les interactions de la prise de conscience à l'après-vente."},
+      {q:"Un client insatisfait parle de son expérience négative à :",a:["1 à 2 personnes","3 à 5 personnes","10 à 20 personnes","Personne"],c:2,e:"Un client mécontent en parle en moyenne à 10-20 personnes."},
+      {q:"Le SAV signifie :",a:["Service Après Visite","Service Après Vente","Suivi des Achats et Ventes","Section d'Aide en Vente"],c:1,e:"Le SAV gère tout ce qui se passe après la transaction."},
+      {q:"L'empathie en relation client consiste à :",a:["Approuver systématiquement le client","Se mettre à la place du client pour comprendre ses émotions","Offrir une réduction","Appeler le manager"],c:1,e:"L'empathie = comprendre et partager les sentiments du client."},
+      {q:"Un client ambassadeur est :",a:["Un client difficile","Un client qui recommande spontanément la marque","Un client fidèle depuis longtemps","Un client VIP"],c:1,e:"L'ambassadeur est le meilleur outil marketing car il parle gratuitement."},
+      {q:"Le temps de résolution d'une réclamation doit être :",a:["Le plus long possible pour analyser","Le plus court possible","Fixé à 30 jours","Sans délai imposé"],c:1,e:"Un problème résolu rapidement peut transformer un insatisfait en fidèle."},
+      {q:"La reformulation en service client permet de :",a:["Gagner du temps","Confirmer la compréhension et rassurer le client","Éviter les questions","Conclure rapidement"],c:1,e:"Reformuler = prouver qu'on a compris et éviter les malentendus."},
+      {q:"Un CRM permet principalement de :",a:["Gérer la comptabilité","Centraliser et exploiter les données clients","Recruter des commerciaux","Gérer les stocks"],c:1,e:"CRM = base de données centralisée pour piloter la relation client."},
+      {q:"La satisfaction client se mesure notamment via :",a:["Le CA uniquement","Des enquêtes, notes et avis","Le nombre d'employés","Le prix des produits"],c:1,e:"Questionnaires, NPS, avis Google = outils de mesure de satisfaction."},
+    ],
+    2:[
+      {q:"Le Customer Lifetime Value (CLV) mesure :",a:["Le nombre de visites d'un client","La valeur totale générée par un client sur toute sa relation","Le coût d'acquisition d'un client","Le panier moyen"],c:1,e:"CLV = CA total attendu d'un client pendant toute sa relation avec la marque."},
+      {q:"L'omnicanalité signifie :",a:["Vendre uniquement en ligne","Offrir une expérience cohérente sur tous les canaux","Multiplier les points de vente physiques","Supprimer les intermédiaires"],c:1,e:"Omnicanal = fluidité entre boutique, site, app, réseaux sociaux."},
+      {q:"Un SLA (Service Level Agreement) définit :",a:["Le prix d'un service","Les niveaux de qualité et délais attendus","Le contrat de travail","Le plan de formation"],c:1,e:"SLA = engagement contractuel sur les niveaux de service."},
+      {q:"La méthode HEARD en gestion de réclamation signifie :",a:["Hear, Empathize, Apologize, Resolve, Diagnose","Help, Explain, Answer, Respond, Deliver","Handle, Escalate, Advise, Redirect, Document","Hear, Evaluate, Act, Report, Decide"],c:0,e:"HEARD = écouter, empathiser, s'excuser, résoudre, diagnostiquer."},
+      {q:"Le taux de churn mesure :",a:["La croissance client","Le taux d'attrition (clients perdus)","La satisfaction","Le panier moyen"],c:1,e:"Churn rate = % de clients qui cessent leur relation sur une période."},
+    ],
+    3:[
+      {q:"La voix du client (VoC) désigne :",a:["Les réclamations uniquement","L'ensemble des retours clients captés via tous les canaux","Les avis négatifs sur internet","Les appels téléphoniques"],c:1,e:"VoC = collecte systématique des besoins, attentes et feedbacks clients."},
+      {q:"L'effort client (Customer Effort Score) mesure :",a:["La satisfaction globale","La facilité avec laquelle le client a résolu son problème","Le délai de livraison","Le nombre d'interactions"],c:1,e:"CES = moins le client fait d'effort, plus il est satisfait et fidèle."},
+    ],
+    4:[
+      {q:"Le Net Promoter Score se calcule :",a:["(Satisfaits + Neutres) / Total","% Promoteurs - % Détracteurs","Somme des notes / Nombre de clients","(Fidèles / Total) × 100"],c:1,e:"NPS = % qui recommandent (9-10) minus % qui déconseillent (0-6)."},
+      {q:"La cartographie du parcours client (customer journey map) permet de :",a:["Localiser les clients","Visualiser tous les points de contact et émotions associées","Calculer le CLV","Segmenter les clients"],c:1,e:"La journey map révèle les moments de friction à améliorer."},
+    ],
+  },
+  "Gestion Commerciale":{
+    1:[
+      {q:"La marge brute se calcule :",a:["CA - Charges totales","CA - Coût d'achat des marchandises vendues","CA - Charges fixes","Bénéfice net / CA"],c:1,e:"Marge brute = CA HT - coût d'achat HT des marchandises vendues."},
+      {q:"La TVA à 20% sur un prix HT de 100€ donne un prix TTC de :",a:["110€","115€","120€","125€"],c:2,e:"Prix TTC = Prix HT × 1,20 = 100 × 1,20 = 120€."},
+      {q:"Le taux de marque se calcule :",a:["Marge / Coût d'achat × 100","Marge / Prix de vente × 100","CA / Marge × 100","Bénéfice / CA × 100"],c:1,e:"Taux de marque = marge brute / prix de vente HT × 100."},
+      {q:"Un devis est :",a:["Une facture définitive","Un document estimatif du coût d'une prestation","Un bon de commande","Un reçu de paiement"],c:1,e:"Le devis est un engagement de prix avant réalisation."},
+      {q:"Le seuil de rentabilité (SR) est atteint quand :",a:["Le CA dépasse les charges variables","Le CA couvre toutes les charges (fixes + variables)","Les charges fixes sont nulles","Le bénéfice est maximum"],c:1,e:"Au SR, résultat = 0 : ni bénéfice ni perte."},
+      {q:"Les charges fixes sont :",a:["Proportionnelles au volume d'activité","Indépendantes du volume d'activité","Toujours nulles","Égales aux charges variables"],c:1,e:"Loyer, salaires fixes = charges fixes car elles ne varient pas avec l'activité."},
+      {q:"Une facture doit obligatoirement mentionner :",a:["La photo du produit","La date, le prix HT, la TVA, le prix TTC","Le nom du livreur","La couleur du produit"],c:1,e:"Mentions légales obligatoires sur facture : parties, date, désignation, prix HT, TVA, TTC."},
+      {q:"Le stock de sécurité sert à :",a:["Réduire les coûts","Éviter les ruptures en cas d'imprévu","Augmenter les ventes","Satisfaire les gros clients"],c:1,e:"Stock de sécurité = tampon contre les aléas de livraison ou hausse de demande."},
+      {q:"Le délai de paiement légal entre professionnels est de :",a:["30 jours maximum","45 jours fin de mois ou 60 jours max","90 jours","Sans limite légale"],c:1,e:"La LME fixe un délai maximum de 60 jours ou 45 jours fin de mois."},
+      {q:"Le coefficient multiplicateur est utilisé pour :",a:["Calculer la TVA","Passer du prix d'achat au prix de vente","Mesurer la rentabilité","Calculer les charges"],c:1,e:"Coeff multiplicateur = Prix de vente TTC / Prix d'achat HT."},
+    ],
+    2:[
+      {q:"Le taux de marque de 40% signifie :",a:["La marge représente 40% du coût","La marge représente 40% du prix de vente","On vend 40% plus cher qu'on achète","Le bénéfice est de 40%"],c:1,e:"Taux de marque = marge / PV × 100. Toujours < 100%."},
+      {q:"La méthode FIFO (PEPS) signifie :",a:["Les dernières entrées sortent en premier","Les premières entrées sortent en premier","Sortie aléatoire","Sortie par valeur"],c:1,e:"FIFO = First In First Out. Les premiers arrivés partent en premier."},
+      {q:"L'EBE (Excédent Brut d'Exploitation) mesure :",a:["Le bénéfice net","La richesse créée par l'activité avant amortissements et charges financières","Le CA brut","Les charges fixes"],c:1,e:"EBE = indicateur de performance opérationnelle avant éléments exceptionnels."},
+      {q:"Une remise commerciale est accordée :",a:["En échange d'un volume important","Pour paiement anticipé","Pour défaut de qualité","Après négociation syndicale"],c:0,e:"Remise = réduction sur quantité. Escompte = réduction pour paiement rapide."},
+      {q:"Le budget prévisionnel des ventes sert à :",a:["Calculer la TVA à payer","Anticiper les recettes futures pour piloter l'activité","Gérer les congés","Établir les contrats"],c:1,e:"Budget ventes = outil de pilotage et de prévision financière."},
+    ],
+    3:[
+      {q:"Le BFR (Besoin en Fonds de Roulement) représente :",a:["Les bénéfices mis en réserve","Le besoin de trésorerie lié au décalage entre encaissements et décaissements","Les fonds propres","Le capital social"],c:1,e:"BFR = stocks + créances clients - dettes fournisseurs."},
+      {q:"L'analyse ABC des stocks classe les articles selon :",a:["Leur poids","Leur valeur relative pour prioriser la gestion","Leur couleur","Leur fournisseur"],c:1,e:"Classe A = 20% des articles = 80% de la valeur (loi de Pareto)."},
+    ],
+    4:[
+      {q:"Le tableau de bord commercial doit inclure :",a:["Uniquement le CA","CA, marges, taux de conversion, satisfaction client, stocks","Uniquement les charges","Les données RH uniquement"],c:1,e:"Un bon TDB commercial croise les indicateurs d'activité, de marge et de qualité."},
+      {q:"Le prix psychologique est :",a:["Le prix le plus bas possible","Le prix perçu comme juste par le plus grand nombre de clients","Le prix coûtant","Le prix moyen du marché"],c:1,e:"Prix psychologique = fourchette optimale entre trop cher et trop peu cher (douteux)."},
+    ],
+  },
+  "Droit":{
+    1:[
+      {q:"Le contrat de travail à durée indéterminée s'appelle :",a:["CDD","CDI","CTT","CDA"],c:1,e:"CDI = Contrat à Durée Indéterminée, forme normale de l'emploi."},
+      {q:"La période d'essai en CDI pour un employé est de :",a:["1 mois renouvelable une fois","2 mois renouvelables une fois","6 mois","1 an"],c:1,e:"Période d'essai CDI employé : 2 mois renouvelables 1 fois = 4 mois max."},
+      {q:"Le SMIC est :",a:["Le salaire maximum légal","Le salaire minimum interprofessionnel de croissance","La prime d'ancienneté","Le salaire moyen national"],c:1,e:"Le SMIC est le salaire horaire minimum légal en France."},
+      {q:"Un contrat est valable si :",a:["Il est signé par deux témoins","Il y a consentement, capacité, objet licite et cause","Il est notarié","Il est en français obligatoirement"],c:1,e:"Les 4 conditions de validité d'un contrat (Code civil)."},
+      {q:"La convention collective :",a:["Remplace le Code du travail","Complète le Code du travail pour une branche professionnelle","S'applique uniquement aux cadres","Est fixée par l'État seul"],c:1,e:"La CC est négociée par les partenaires sociaux d'un secteur."},
+      {q:"Le licenciement économique nécessite :",a:["Une faute grave du salarié","Des difficultés économiques ou mutations technologiques","Un accord du salarié","Un vote des salariés"],c:1,e:"Licenciement éco = motif non inhérent à la personne, lié à l'entreprise."},
+      {q:"Le droit de grève en France est :",a:["Interdit dans le privé","Un droit constitutionnel","Limité à 24h","Réservé aux syndicats"],c:1,e:"Le droit de grève est reconnu par le préambule de la Constitution de 1946."},
+      {q:"Une SARL a :",a:["Un seul associé obligatoire","De 1 à 100 associés","Des actionnaires en bourse","Pas de capital minimum"],c:1,e:"SARL : 1 à 100 associés, responsabilité limitée aux apports."},
+      {q:"La prescription en droit du travail pour les salaires non payés est de :",a:["1 an","3 ans","5 ans","10 ans"],c:1,e:"Les créances salariales se prescrivent en 3 ans."},
+      {q:"Un contrat CDD ne peut excéder :",a:["6 mois","12 mois","18 mois","24 mois selon cas"],c:3,e:"CDD max 18 mois en général, 24 mois dans certains cas (export, usage)."},
+    ],
+    2:[
+      {q:"Le règlement RGPD protège :",a:["Les brevets","Les données personnelles des individus","Le droit d'auteur","Les secrets commerciaux"],c:1,e:"RGPD = Règlement Général sur la Protection des Données personnelles."},
+      {q:"La responsabilité civile engage à :",a:["Aller en prison","Réparer le préjudice causé à autrui","Payer une amende pénale","Perdre sa licence professionnelle"],c:1,e:"RC = obligation de réparer le dommage causé à une autre personne."},
+      {q:"Une SAS se distingue de la SA par :",a:["Son capital minimum plus élevé","Sa grande liberté statutaire et pas de minimum d'actionnaires","Son obligation d'être cotée","Ses associés illimités"],c:1,e:"SAS = très flexible statutairement, 1 actionnaire minimum (SASU)."},
+      {q:"L'abus de position dominante est interdit par :",a:["Le Code civil","Le droit de la concurrence","Le Code pénal","Le droit fiscal"],c:1,e:"Droit de la concurrence (antitrust) interdit d'exploiter abusivement sa domination."},
+      {q:"Le droit de rétractation en vente à distance est de :",a:["7 jours","14 jours","30 jours","48 heures"],c:1,e:"14 jours calendaires pour se rétracter sans motif en achat à distance."},
+    ],
+    3:[
+      {q:"La faute lourde en droit du travail :",a:["Prive de préavis et indemnités","Est moins grave qu'une faute grave","Donne droit à des dommages","Nécessite un accord judiciaire"],c:0,e:"Faute lourde = intention de nuire → prive de toutes indemnités."},
+      {q:"Le comité social et économique (CSE) est obligatoire à partir de :",a:["5 salariés","11 salariés","50 salariés","100 salariés"],c:1,e:"CSE obligatoire dès 11 salariés, avec des attributions élargies dès 50."},
+    ],
+    4:[
+      {q:"La cession de fonds de commerce nécessite :",a:["Un accord verbal suffit","Un acte écrit, publication légale et purge du droit de préemption","Uniquement un notaire","L'accord des concurrents"],c:1,e:"Formalités lourdes : acte écrit, enregistrement, publication au BODACC."},
+      {q:"Le redressement judiciaire vise à :",a:["Liquider immédiatement l'entreprise","Permettre la poursuite d'activité et apurer les dettes","Punir les dirigeants","Vendre les actifs au plus vite"],c:1,e:"Redressement = procédure collective pour sauver l'entreprise en difficulté."},
+    ],
+  },
+  "Économie":{
+    1:[
+      {q:"Le PIB mesure :",a:["Le revenu des ménages","La valeur de tous les biens et services produits dans un pays","Le total des exportations","La richesse des entreprises"],c:1,e:"PIB = Produit Intérieur Brut = richesse produite sur un territoire sur une période."},
+      {q:"L'inflation correspond à :",a:["Une baisse générale des prix","Une hausse générale et durable des prix","Une augmentation du chômage","Une baisse des salaires"],c:1,e:"Inflation = hausse du niveau général des prix mesurée par l'IPC."},
+      {q:"Le chômage frictionnel désigne :",a:["Le chômage lié à une crise","Le chômage entre deux emplois lors d'une transition","Le chômage de longue durée","Le sous-emploi"],c:1,e:"Chômage frictionnel = temporaire, dû aux délais de recherche d'emploi."},
+      {q:"La politique monétaire est gérée en zone euro par :",a:["Le gouvernement français","La Banque Centrale Européenne (BCE)","Le FMI","L'OCDE"],c:1,e:"La BCE fixe les taux directeurs et régule la masse monétaire en zone euro."},
+      {q:"Une économie de marché repose sur :",a:["La planification étatique","La loi de l'offre et de la demande","Le contrôle des prix","La nationalisation des entreprises"],c:1,e:"Économie de marché = prix fixés par la confrontation offre/demande."},
+      {q:"Le déficit budgétaire signifie :",a:["Les recettes > les dépenses de l'État","Les dépenses > les recettes de l'État","L'équilibre budgétaire","Une dette nulle"],c:1,e:"Déficit = l'État dépense plus qu'il ne perçoit en recettes fiscales."},
+      {q:"La mondialisation désigne :",a:["La domination économique d'un pays","L'intégration croissante des économies à l'échelle mondiale","La disparition des frontières politiques","L'uniformisation culturelle uniquement"],c:1,e:"Mondialisation = intensification des échanges de biens, capitaux et personnes."},
+      {q:"Le taux de chômage en France est calculé par :",a:["Pôle Emploi","L'INSEE selon les critères du BIT","La Banque de France","L'URSSAF"],c:1,e:"L'INSEE applique la définition internationale du BIT pour mesurer le chômage."},
+      {q:"Une dévaluation de la monnaie rend les exportations :",a:["Plus chères et moins compétitives","Moins chères et plus compétitives","Sans effet sur les exportations","Plus taxées"],c:1,e:"Monnaie faible = produits nationaux moins chers à l'étranger → boost des exports."},
+      {q:"Le libre-échange consiste à :",a:["Protéger les industries nationales","Supprimer les barrières douanières entre pays","Contrôler les flux migratoires","Nationaliser le commerce"],c:1,e:"Libre-échange = commercer sans droits de douane ni quotas."},
+    ],
+    2:[
+      {q:"L'élasticité-prix de la demande mesure :",a:["L'évolution du CA selon les saisons","La sensibilité de la demande aux variations de prix","Le coût de production unitaire","La fidélité des consommateurs"],c:1,e:"Élasticité = % variation demande / % variation prix."},
+      {q:"Un marché en monopole est caractérisé par :",a:["De nombreux vendeurs et acheteurs","Un seul vendeur face à de nombreux acheteurs","Quelques vendeurs puissants","Un prix fixé par l'État"],c:1,e:"Monopole = 1 seul offreur qui fixe le prix sans concurrence."},
+      {q:"L'effet de levier financier désigne :",a:["L'utilisation de l'endettement pour amplifier la rentabilité","La réduction des coûts fixes","L'augmentation du capital","La diversification des produits"],c:0,e:"Levier = endettement peut amplifier les gains (et les pertes)."},
+      {q:"La politique budgétaire expansionniste vise à :",a:["Réduire les dépenses publiques","Augmenter les dépenses ou baisser les impôts pour stimuler l'activité","Équilibrer le budget","Rembourser la dette rapidement"],c:1,e:"Politique expansionniste = relancer la croissance par la dépense publique."},
+      {q:"La stagflation est la combinaison de :",a:["Forte croissance et inflation","Stagnation économique et inflation","Déflation et chômage","Croissance et chômage faible"],c:1,e:"Stagflation = pire des deux mondes : récession + hausse des prix."},
+    ],
+    3:[
+      {q:"La courbe de Phillips illustre :",a:["La relation entre PIB et exportations","Le lien inversé entre chômage et inflation","La relation entre taux d'intérêt et investissement","Le lien entre épargne et consommation"],c:1,e:"Phillips : quand le chômage baisse, l'inflation tend à monter."},
+      {q:"Le multiplicateur keynésien signifie :",a:["Toute dépense publique est inutile","Une dépense initiale génère un revenu supérieur par effet d'entraînement","Les impôts multiplient la dette","La monnaie perd de la valeur"],c:1,e:"Multiplicateur k = 1/(1-propension à consommer) : 1€ investi = k€ de PIB."},
+    ],
+    4:[
+      {q:"La théorie des avantages comparatifs (Ricardo) dit :",a:["Chaque pays produit tout ce qu'il consomme","Chaque pays se spécialise dans ce qu'il produit relativement mieux","Les pays riches dominent toujours","Le libre-échange nuit aux pays pauvres"],c:1,e:"Ricardo : même sans avantage absolu, le commerce est bénéfique par spécialisation."},
+      {q:"L'externalité négative est :",a:["Un coût supporté par des tiers non impliqués dans la transaction","Un bénéfice pour la société","Une taxe sur les entreprises","Un coût de production élevé"],c:0,e:"Pollution industrielle = externalité négative car subie par la collectivité."},
+    ],
+  },
+  "Informatique":{
+    1:[
+      {q:"Un octet est composé de :",a:["4 bits","8 bits","16 bits","32 bits"],c:1,e:"1 octet = 8 bits. Bit = plus petite unité d'info (0 ou 1)."},
+      {q:"HTTP signifie :",a:["HyperText Transfer Protocol","High Tech Transfer Program","Hyper Transfer Text Page","Home Text Transport Protocol"],c:0,e:"HTTP = protocole de transfert de données du Web."},
+      {q:"Un virus informatique est :",a:["Un bug logiciel","Un programme malveillant qui se réplique","Une panne matérielle","Un fichier corrompu"],c:1,e:"Virus = programme qui se copie et se propage à l'insu de l'utilisateur."},
+      {q:"Le cloud computing permet de :",a:["Stocker des données uniquement localement","Accéder à des ressources informatiques via internet","Accélérer le processeur","Supprimer les virus"],c:1,e:"Cloud = ressources (stockage, logiciels, calcul) accessibles à distance via internet."},
+      {q:"Un pare-feu (firewall) sert à :",a:["Refroidir le processeur","Filtrer le trafic réseau pour bloquer les accès non autorisés","Accélérer la connexion","Sauvegarder les données"],c:1,e:"Le firewall contrôle les flux réseau entrants et sortants."},
+      {q:"Qu'est-ce qu'un phishing ?",a:["Un antivirus","Une tentative d'usurpation d'identité par email frauduleux","Un réseau Wi-Fi public","Un type de sauvegarde"],c:1,e:"Phishing = hameçonnage pour voler des identifiants via faux emails."},
+      {q:"La résolution 1920×1080 correspond à :",a:["HD (720p)","Full HD (1080p)","4K","SD"],c:1,e:"1920×1080 = Full HD, résolution standard des écrans modernes."},
+      {q:"Un PDF est :",a:["Un format d'image uniquement","Un format de document portable non modifiable facilement","Un logiciel de traitement de texte","Un protocole réseau"],c:1,e:"PDF = Portable Document Format, conserve la mise en page quel que soit l'appareil."},
+      {q:"Le Wi-Fi utilise :",a:["Des câbles Ethernet","Des ondes radio","La fibre optique","Le Bluetooth uniquement"],c:1,e:"Wi-Fi = communication sans fil par ondes radio (fréquences 2,4 et 5 GHz)."},
+      {q:"Ctrl+Z dans la plupart des logiciels permet de :",a:["Enregistrer","Copier","Annuler la dernière action","Quitter"],c:2,e:"Ctrl+Z = annuler (Undo), raccourci universel sur Windows."},
+    ],
+    2:[
+      {q:"Une adresse IP sert à :",a:["Identifier un appareil sur un réseau","Stocker des fichiers","Protéger un mot de passe","Compresser des données"],c:0,e:"IP = identifiant unique d'un appareil sur un réseau internet ou local."},
+      {q:"Le HTTPS par rapport au HTTP est :",a:["Plus lent","Sécurisé grâce au chiffrement SSL/TLS","Uniquement pour les images","Réservé aux entreprises"],c:1,e:"HTTPS = HTTP + chiffrement. Le cadenas dans la barre d'adresse l'indique."},
+      {q:"Un SSD est plus rapide qu'un HDD car :",a:["Il a plus de mémoire RAM","Il n'a pas de pièces mécaniques","Il est plus petit","Il consomme plus d'énergie"],c:1,e:"SSD = mémoire flash sans disque rotatif → accès quasi-instantané."},
+      {q:"Le RGPD s'applique aux données :",a:["Publiques uniquement","Personnelles de résidents de l'UE","D'entreprises uniquement","Financières uniquement"],c:1,e:"RGPD protège toute donnée permettant d'identifier une personne physique."},
+      {q:"Une base de données SQL utilise :",a:["Des fichiers Word","Des tables relationnelles","Des images","Des graphiques"],c:1,e:"SQL = Structured Query Language pour gérer des tables relationnelles."},
+    ],
+    3:[
+      {q:"Le chiffrement asymétrique utilise :",a:["Une seule clé partagée","Une clé publique et une clé privée","Un mot de passe simple","Un certificat papier"],c:1,e:"Asymétrique = clé publique (chiffre) + clé privée (déchiffre). Fondement du HTTPS."},
+      {q:"L'agilité (méthode Scrum) repose sur :",a:["Des plans rigides sur 5 ans","Des sprints courts avec livraisons fréquentes","Un seul chef de projet tout-puissant","L'absence de documentation"],c:1,e:"Scrum = cycles courts (sprints), équipe auto-organisée, adaptabilité continue."},
+    ],
+    4:[
+      {q:"L'intelligence artificielle générative produit :",a:["Uniquement des calculs mathématiques","Du contenu nouveau (texte, image, code) à partir de données d'entraînement","Des sauvegardes automatiques","Des antivirus"],c:1,e:"IA générative (GPT, DALL-E...) = créer du contenu original par apprentissage."},
+      {q:"Le machine learning est :",a:["La programmation manuelle de règles","Un système qui apprend à partir de données sans être explicitement programmé","Un antivirus avancé","Un réseau social professionnel"],c:1,e:"ML = algorithmes qui s'améliorent automatiquement avec l'expérience."},
+    ],
+  },
+  "Adaptation Offre":{
+    1:[
+      {q:"Le cycle de vie produit comprend les phases :",a:["Conception, test, vente, retrait","Lancement, croissance, maturité, déclin","Idée, proto, série, fin","Étude, prod, distrib, arrêt"],c:1,e:"4 phases classiques du cycle de vie : lancement → croissance → maturité → déclin."},
+      {q:"L'assortiment d'un magasin désigne :",a:["La décoration intérieure","L'ensemble des produits proposés à la vente","Le personnel en magasin","La politique de prix"],c:1,e:"Assortiment = ensemble des références proposées aux clients."},
+      {q:"La largeur d'un assortiment correspond à :",a:["Le nombre de références par famille","Le nombre de familles de produits","La profondeur de chaque rayon","Le nombre total d'articles"],c:1,e:"Largeur = nombre de familles (rayons). Profondeur = nombre de refs dans chaque famille."},
+      {q:"Un produit en phase de maturité doit être :",a:["Abandonné immédiatement","Relancé ou repositionné pour maintenir les ventes","Lancé en grande quantité","Gardé sans changement"],c:1,e:"En maturité : saturation du marché → il faut innover, différencier ou baisser les coûts."},
+      {q:"La différenciation consiste à :",a:["Copier les concurrents","Se démarquer par des caractéristiques uniques","Baisser les prix","Réduire l'assortiment"],c:1,e:"Différenciation = offrir quelque chose de perçu comme unique pour justifier un prix premium."},
+      {q:"Un produit d'appel est :",a:["Un produit très rentable","Un produit vendu à prix bas pour attirer des clients","Un produit en fin de vie","Un produit de luxe"],c:1,e:"Produit d'appel = vendu (presque) à prix coûtant pour générer du trafic."},
+      {q:"La gamme courte désigne :",a:["Peu de familles et peu de références","Beaucoup de familles","Une gamme de luxe","Un assortiment saisonnier"],c:0,e:"Gamme courte = peu de largeur et peu de profondeur."},
+      {q:"L'extension de gamme vers le haut vise à :",a:["Vendre moins cher","Proposer des produits plus haut de gamme","Augmenter le volume de ventes","Réduire les coûts"],c:1,e:"Trading up = monter en gamme pour capter de nouveaux segments premium."},
+      {q:"Le taux de rotation des stocks mesure :",a:["La vitesse à laquelle les stocks se renouvellent","La qualité des produits","Le nombre de références","Le taux de rupture"],c:0,e:"Rotation = CA / Stock moyen. Plus c'est élevé, plus les stocks tournent vite."},
+      {q:"Un produit générique est :",a:["Un produit de marque premium","Un produit sans marque ou à marque distributeur basique","Un produit innovant","Un produit de luxe"],c:1,e:"Générique = premier prix, packaging sobre, marque inconnue ou MDD basique."},
+    ],
+    2:[
+      {q:"La marque de distributeur (MDD) est :",a:["Une marque nationale vendue partout","Une marque créée par l'enseigne elle-même","Une marque de luxe","Une marque étrangère"],c:1,e:"MDD = produit fabriqué pour l'enseigne qui le vend sous sa propre marque."},
+      {q:"Le positionnement prix 'milieu de gamme' correspond à :",a:["Prix plancher","Prix psychologique moyen visant le plus grand nombre","Prix premium","Prix de pénétration"],c:1,e:"Milieu de gamme = offre accessible mais perçue comme qualitative."},
+      {q:"La saisonnalité d'un produit implique :",a:["Des ventes constantes toute l'année","Des variations de la demande selon les saisons","Un seul pic de ventes annuel","Une demande aléatoire"],c:1,e:"Saisonnalité = adapter les stocks, promotions et assortiment aux pics prévisibles."},
+    ],
+    3:[
+      {q:"La matrice BCG classe les produits selon :",a:["Prix et qualité","Part de marché relative et croissance du marché","Ventes et marges","Notoriété et distribution"],c:1,e:"BCG : 4 cases (Étoiles, Vaches à lait, Dilemmes, Poids morts)."},
+    ],
+    4:[
+      {q:"Un produit 'vache à lait' dans la matrice BCG est :",a:["En forte croissance avec faible part de marché","En faible croissance avec forte part de marché","À abandonner","En lancement"],c:1,e:"Vache à lait = marché mature, leader : génère du cash à réinvestir ailleurs."},
+    ],
+  },
+  "Espace Commercial":{
+    1:[
+      {q:"La zone de chalandise est :",a:["L'espace derrière les caisses","La zone géographique d'où proviennent les clients du magasin","Le stockage des marchandises","La zone de livraison"],c:1,e:"Zone de chalandise = aire de recrutement de la clientèle d'un point de vente."},
+      {q:"L'agencement d'un magasin vise à :",a:["Réduire le personnel","Guider le client et maximiser les achats","Limiter les vols","Faciliter les livraisons"],c:1,e:"Agencement = organisation physique pour optimiser le parcours et les achats clients."},
+      {q:"La zone froide d'un magasin est :",a:["La zone climatisée","La zone naturellement peu fréquentée par les clients","Le rayon surgelés","La réserve"],c:1,e:"Zone froide = zone à faible trafic, souvent les angles morts ou fonds de rayon."},
+      {q:"Un linéaire développé mesure :",a:["La hauteur du rayon","La longueur totale d'exposition incluant tous les niveaux","La largeur du couloir","La surface totale du magasin"],c:1,e:"Linéaire développé = linéaire au sol × nombre de niveaux."},
+      {q:"La signalétique en magasin sert à :",a:["Décorer le magasin","Orienter le client et mettre en valeur les offres","Sécuriser les produits","Gérer les stocks"],c:1,e:"Signalétique = panneaux, affichages, repères pour guider et informer le client."},
+      {q:"Un gondole en grande surface est :",a:["Une caisse enregistreuse","Un meuble de présentation central ou en rayon","Une zone de dégustation","Un chariot spécial"],c:1,e:"Gondole = meuble de rangement et de présentation des produits en rayon."},
+      {q:"Le sens de circulation naturel en magasin est :",a:["De droite à gauche","De gauche à droite puis vers le fond","Aléatoire","Toujours vers les caisses"],c:1,e:"Les clients tournent naturellement à droite à l'entrée (sens inverse des aiguilles)."},
+      {q:"Un plan de masse est :",a:["Le plan financier du magasin","Le plan d'implantation des rayons et zones dans le magasin","L'inventaire des stocks","Le plan de formation"],c:1,e:"Plan de masse = représentation de l'organisation spatiale du point de vente."},
+      {q:"Le taux d'occupation du linéaire optimal vise :",a:["100% de remplissage constant","Un remplissage suffisant sans rupture ni surstock","Le minimum de références","Le maximum de références possibles"],c:1,e:"Ni vide (rupture) ni surchargé (mauvaise lisibilité) = équilibre optimal."},
+      {q:"La cross-merchadising consiste à :",a:["Vendre des produits en ligne","Regrouper des produits complémentaires pour augmenter les achats","Copier les concurrents","Changer le prix de vente"],c:1,e:"Cross-merchandising = rapprocher pâtes et sauce tomate pour vendre les deux ensemble."},
+    ],
+    2:[
+      {q:"Le chiffre d'affaires au mètre linéaire mesure :",a:["Le CA total du magasin","La productivité de chaque mètre de rayon","Le coût d'aménagement","La marge par produit"],c:1,e:"CA/ml = outil pour comparer la rentabilité des différents rayons."},
+      {q:"L'implantation horizontale place les produits :",a:["En colonne de haut en bas","Sur toute la longueur du rayon au même niveau","Par prix croissant","Par marque uniquement"],c:1,e:"Horizontale = une famille occupe un niveau sur toute la longueur."},
+      {q:"Les niveaux 'yeux' et 'mains' en rayon sont :",a:["Les moins vendeurs","Les niveaux les plus vendeurs car naturellement regardés","Réservés aux produits lourds","Les moins accessibles"],c:1,e:"Niveau yeux (1,50m) et mains (0,80-1,50m) = meilleurs emplacements pour les ventes."},
+    ],
+    3:[
+      {q:"L'indice de sensibilité d'un rayon compare :",a:["Le prix avec les concurrents","La part du rayon en CA avec sa part en linéaire","Le stock avec les ventes","La marge avec le CA"],c:1,e:"IS = (part CA rayon / part linéaire rayon). IS>1 = rayon sous-représenté."},
+    ],
+    4:[
+      {q:"Le modèle de Huff permet de :",a:["Calculer la marge d'un rayon","Évaluer la probabilité qu'un client se rende dans un point de vente","Mesurer la satisfaction","Calculer le CA prévisionnel"],c:1,e:"Modèle de Huff = gravitation commerciale tenant compte de la taille et distance."},
+    ],
+  },
+  "Communication":{
+    1:[
+      {q:"La communication non verbale représente environ :",a:["10% du message","30% du message","55% du message","90% du message"],c:2,e:"Selon Mehrabian : 55% non-verbal (posture, gestes), 38% para-verbal, 7% mots."},
+      {q:"Un message de communication comprend :",a:["Un émetteur uniquement","Un émetteur, un message, un canal, un récepteur et un feedback","Uniquement un texte","Uniquement une image"],c:1,e:"Schéma de Shannon : émetteur → encodage → canal → décodage → récepteur."},
+      {q:"Le canal le plus riche en communication est :",a:["L'email","Le SMS","La réunion en face à face","La lettre postale"],c:2,e:"Face à face = canal le plus riche car multi-sensoriel avec feedback immédiat."},
+      {q:"L'assertivité en communication c'est :",a:["S'imposer à tout prix","Exprimer ses opinions avec respect et fermeté","Éviter les conflits","Toujours accepter les demandes"],c:1,e:"Assertivité = affirmation de soi dans le respect mutuel."},
+      {q:"Un compte-rendu de réunion sert à :",a:["Remplacer la réunion","Tracer les décisions et actions prises","Critiquer les participants","Remplacer l'ordre du jour"],c:1,e:"CR = document officiel qui trace les échanges, décisions et responsabilités."},
+      {q:"La règle des 3V en communication orale concerne :",a:["Volume, Vitesse, Vision","Verbal, Vocal, Visuel","Vrai, Vivant, Visuel","Voix, Volume, Vocabulaire"],c:1,e:"3V : Verbal (mots), Vocal (voix, ton), Visuel (corps, posture)."},
+      {q:"Une note de service s'adresse :",a:["Aux clients","Aux collaborateurs de l'entreprise","Aux fournisseurs","Aux actionnaires"],c:1,e:"Note de service = communication interne officielle descendante."},
+      {q:"Le registre de langue soutenu est utilisé :",a:["Entre amis","Dans les documents professionnels officiels","En conversation informelle","Par SMS"],c:1,e:"Registre soutenu = vocabulaire précis et élaboré, adapté aux contextes formels."},
+      {q:"Écouter activement signifie :",a:["Attendre son tour de parler","S'impliquer pleinement : reformuler, questionner, valider","Prendre des notes uniquement","Regarder ailleurs"],c:1,e:"Écoute active = engagement total pour comprendre au-delà des mots."},
+      {q:"Un mail professionnel doit commencer par :",a:["'Salut !'","Une formule de politesse adaptée au destinataire","Le contenu directement","Une question"],c:1,e:"'Madame/Monsieur' ou 'Bonjour [Prénom]' selon le niveau de formalité."},
+    ],
+    2:[
+      {q:"La pyramide inversée en rédaction professionnelle place :",a:["Le contexte en premier","L'information principale en premier, puis les détails","La conclusion à la fin","Les annexes au début"],c:1,e:"Pyramide inversée = aller droit au but, puis développer. Utilisée en journalisme et pro."},
+      {q:"Le plan AIDA en communication est :",a:["Attention, Intérêt, Désir, Action","Analyse, Information, Décision, Action","Achat, Image, Distribution, Après-vente","Annonce, Idée, Démonstration, Accord"],c:0,e:"AIDA = capter l'Attention, susciter l'Intérêt, créer le Désir, pousser à l'Action."},
+      {q:"Une prise de parole en public efficace nécessite :",a:["Lire son texte intégralement","Préparer un plan clair, maîtriser son sujet et gérer son stress","Improviser totalement","Parler le plus vite possible"],c:1,e:"Préparation + structure + langage corporel = clés d'une bonne prise de parole."},
+      {q:"Le biais de confirmation en communication :",a:["Aide à comprendre l'autre","Pousse à ne retenir que les infos qui confirment ses croyances","Favorise l'écoute active","Améliore la prise de décision"],c:1,e:"Biais de confirmation = filtre cognitif qui sélectionne les infos confortables."},
+    ],
+    3:[
+      {q:"La communication institutionnelle vise à :",a:["Vendre des produits","Valoriser l'image globale de l'entreprise auprès de toutes ses parties prenantes","Recruter uniquement","Communiquer en interne"],c:1,e:"Com institutionnelle = corporate communication, image de marque employeur et sociétale."},
+    ],
+    4:[
+      {q:"La crise de communication nécessite en priorité :",a:["Le silence total","Une réponse rapide, honnête et coordonnée","D'attaquer les médias","D'attendre que ça se calme"],c:1,e:"Gestion de crise = célérité + transparence + cellule de crise = limiter les dégâts."},
+    ],
+  },
+  "RH":{
+    1:[
+      {q:"Le recrutement interne présente l'avantage de :",a:["Apporter de nouvelles idées","Valoriser les collaborateurs existants et réduire les coûts","Diversifier les profils","Éviter les entretiens"],c:1,e:"Recrutement interne = motivation, rétention, connaissance du poste, moins coûteux."},
+      {q:"La fiche de poste décrit :",a:["Le salaire uniquement","Les missions, compétences requises et conditions de travail","La biographie du candidat","Le bilan financier de l'entreprise"],c:1,e:"Fiche de poste = document de référence pour recruter et évaluer."},
+      {q:"Le bulletin de paie doit être conservé :",a:["5 ans","10 ans","À vie (sans limite)","2 ans"],c:2,e:"Les bulletins de salaire doivent être conservés sans limitation de durée par le salarié."},
+      {q:"L'entretien annuel d'évaluation sert à :",a:["Sanctionner les mauvais résultats","Faire le bilan de l'année et fixer les objectifs","Négocier uniquement le salaire","Décider des licenciements"],c:1,e:"EAE = bilan, objectifs, formation, perspectives = outil de management."},
+      {q:"Le plan de formation vise à :",a:["Remplacer les salariés","Développer les compétences pour accompagner la stratégie","Réduire les effectifs","Établir les fiches de paie"],c:1,e:"Plan de développement des compétences = formation alignée sur les besoins entreprise."},
+      {q:"Le taux d'absentéisme se calcule :",a:["Nombre d'absents / Effectif total","(Heures d'absence / Heures théoriques) × 100","CA perdu / Effectif","Jours de congés / Jours ouvrés"],c:1,e:"Absentéisme = heures perdues / heures théoriques × 100."},
+      {q:"La GPEC signifie :",a:["Gestion Préventive des Emplois et Compétences","Gestion Prévisionnelle des Emplois et des Compétences","Grand Plan d'Emploi et de Carrière","Groupement Professionnel d'Entreprises et de Compétences"],c:1,e:"GPEC = anticipation des besoins en RH pour accompagner la stratégie."},
+      {q:"Un CDI peut être rompu par :",a:["L'employeur uniquement","Démission, licenciement, rupture conventionnelle ou retraite","Le salarié uniquement","Uniquement devant le tribunal"],c:1,e:"CDI = fin possible par démission, licenciement, rupture conv. ou départ en retraite."},
+      {q:"Le droit à la formation (CPF) est :",a:["Un droit accordé par l'employeur","Un droit individuel du salarié alimenté en euros","Réservé aux cadres","Limité à 3 formations par vie"],c:1,e:"CPF = Compte Personnel de Formation, droit individuel portable tout au long de la vie."},
+      {q:"Les congés payés légaux en France sont de :",a:["4 semaines","5 semaines (25 jours ouvrables)","6 semaines","3 semaines"],c:1,e:"5 semaines de CP = 25 jours ouvrables ou 30 jours ouvrés par an."},
+    ],
+    2:[
+      {q:"L'onboarding désigne :",a:["La procédure de licenciement","Le processus d'intégration d'un nouveau collaborateur","La gestion des conflits","La formation continue"],c:1,e:"Onboarding = intégration réussie = rétention et montée en compétences rapide."},
+      {q:"Le management par objectifs (MBO) consiste à :",a:["Fixer des règles strictes","Définir des objectifs mesurables avec le collaborateur et évaluer les résultats","Surveiller en permanence","Imposer des méthodes de travail"],c:1,e:"MBO (Drucker) = objectifs SMART co-construits et évalués régulièrement."},
+      {q:"La discrimination à l'embauche est interdite sur la base de :",a:["L'expérience professionnelle","L'origine, le sexe, l'âge, le handicap, les opinions...","Les diplômes","Les aptitudes professionnelles"],c:1,e:"21 critères de discrimination interdits en France (art. L1132-1 Code du travail)."},
+      {q:"Le bilan social d'une entreprise de +300 salariés contient :",a:["Uniquement les bilans financiers","Les données sociales : effectifs, salaires, formation, conditions de travail","Le plan stratégique","Les objectifs commerciaux"],c:1,e:"Bilan social = radiographie annuelle des données sociales de l'entreprise."},
+    ],
+    3:[
+      {q:"La pyramide des âges d'une entreprise permet de :",a:["Calculer les retraites","Anticiper les départs et les besoins de recrutement futurs","Gérer les congés","Fixer les salaires"],c:1,e:"Pyramide des âges = outil GPEC pour anticiper les évolutions des effectifs."},
+    ],
+    4:[
+      {q:"La marque employeur désigne :",a:["La marque des produits de l'entreprise","L'image de l'entreprise comme employeur pour attirer et retenir les talents","Le logo de l'entreprise","La communication commerciale"],c:1,e:"Marque employeur = réputation RH = clé pour attirer les meilleurs candidats."},
+    ],
+  },
+  "Espagnol":{
+    1:[
+      {q:"'El cliente' en español significa :",a:["Le fournisseur","Le client","Le collègue","Le concurrent"],c:1,e:"El cliente = le client. Le mot est similaire en français."},
+      {q:"'Buenos días' significa :",a:["Bonsoir","Bonne nuit","Bonjour (matin)","Bonne journée"],c:2,e:"Buenos días = bonjour (le matin). Buenas tardes = bonjour/bonsoir (après-midi)."},
+      {q:"'El precio' significa :",a:["Le produit","La remise","Le prix","Le délai"],c:2,e:"El precio = le prix. Precio de venta = prix de vente."},
+      {q:"'¿Cuánto cuesta?' significa :",a:["Où est la caisse ?","Combien ça coûte ?","Quel est votre nom ?","Quand livrez-vous ?"],c:1,e:"¿Cuánto cuesta? = Combien ça coûte ? Frase clave en el comercio."},
+      {q:"'La empresa' significa :",a:["L'employé","L'entreprise","L'entrepôt","L'emballage"],c:1,e:"La empresa = l'entreprise. L'empresario = le chef d'entreprise."},
+      {q:"'Gracias' significa :",a:["S'il vous plaît","Excusez-moi","Merci","De rien"],c:2,e:"Gracias = merci. De nada = de rien."},
+      {q:"'El pedido' en comercio significa :",a:["Le paiement","La livraison","La commande","La facture"],c:2,e:"El pedido = la commande. Hacer un pedido = passer une commande."},
+      {q:"'La factura' significa :",a:["La facture","Le devis","Le bon de livraison","Le contrat"],c:0,e:"La factura = la facture. Facturar = facturer."},
+      {q:"'¿Habla usted francés?' significa :",a:["Vous parlez anglais ?","Parlez-vous français ?","Avez-vous un catalogue ?","Pouvez-vous répéter ?"],c:1,e:"¿Habla usted...? = Parlez-vous... ? (forme de politesse 'usted')."},
+      {q:"'El descuento' significa :",a:["Le contrat","La réduction / remise","Le délai","Le stock"],c:1,e:"El descuento = la réduction, la remise. Dar un descuento = accorder une remise."},
+    ],
+    2:[
+      {q:"'El plazo de entrega' significa :",a:["Le prix de livraison","Le délai de livraison","Le bon de commande","Le transporteur"],c:1,e:"El plazo de entrega = le délai de livraison. Plazo = délai, entrega = livraison."},
+      {q:"'Quisiera hacer un pedido' significa :",a:["Je voudrais payer","Je voudrais passer une commande","Je voudrais un devis","Je voudrais retourner un produit"],c:1,e:"Quisiera = je voudrais (conditionnel poli). Hacer un pedido = passer commande."},
+      {q:"'El proveedor' significa :",a:["L'acheteur","Le client","Le fournisseur","Le directeur"],c:2,e:"El proveedor = le fournisseur. Le mot vient de proveer = fournir."},
+      {q:"'Las condiciones de pago' significa :",a:["Les conditions de livraison","Les modalités de paiement","Les conditions d'accès","Les termes du contrat"],c:1,e:"Las condiciones de pago = les conditions de paiement (délais, modalités)."},
+      {q:"'Me puede enviar un presupuesto?' significa :",a:["Pouvez-vous m'envoyer une facture ?","Pouvez-vous m'envoyer un devis ?","Pouvez-vous m'envoyer une commande ?","Pouvez-vous m'envoyer le catalogue ?"],c:1,e:"Presupuesto = devis / budget estimatif. Enviar = envoyer."},
+    ],
+    3:[
+      {q:"'Estamos interesados en su oferta' significa :",a:["Votre offre est trop chère","Nous ne sommes pas intéressés","Nous sommes intéressés par votre offre","Nous avons reçu votre offre"],c:2,e:"Estar interesado en = être intéressé par. Oferta = offre."},
+      {q:"'¿Cuál es el mínimo de pedido?' significa :",a:["Quel est le délai maximum ?","Quel est le minimum de commande ?","Quel est le prix unitaire ?","Quelle est la quantité disponible ?"],c:1,e:"Mínimo de pedido = minimum de commande. Question clé en B2B."},
+    ],
+    4:[
+      {q:"'Adjunto encontrará nuestra propuesta comercial' significa :",a:["Veuillez trouver ci-joint notre proposition commerciale","Notre proposition n'est pas disponible","Nous attendons votre proposition","Ci-joint votre facture"],c:0,e:"Adjunto = ci-joint, encontrará = vous trouverez. Formule email pro très utilisée."},
+      {q:"'El acuerdo marco' en comercio significa :",a:["L'accord verbal","L'accord-cadre (contrat définissant les conditions générales)","La convention collective","Le contrat ponctuel"],c:1,e:"Acuerdo marco = accord-cadre = contrat définissant les conditions générales de vente."},
+    ],
+  },
+  "Psychologie Vente":{
+    1:[
+      {q:"La preuve sociale en vente consiste à :",a:["Montrer des diplômes","Utiliser les avis et témoignages clients","Baisser les prix","Offrir un cadeau"],c:1,e:"Preuve sociale = 'les autres l'ont fait' rassure et influence la décision."},
+      {q:"L'effet d'ancrage prix fonctionne en :",a:["Cachant le prix jusqu'à la fin","Affichant d'abord un prix élevé qui sert de référence","Proposant plusieurs prix identiques","Laissant le client fixer le prix"],c:1,e:"Ancrage = le 1er prix annoncé conditionne la perception des suivants."},
+      {q:"La rareté ('stock limité') est un levier psychologique car :",a:["Elle baisse le prix","Elle crée un sentiment d'urgence et amplifie le désir","Elle rassure le client","Elle simplifie la décision"],c:1,e:"FOMO (peur de manquer) = la rareté augmente la valeur perçue."},
+      {q:"Le pied dans la porte consiste à :",a:["Forcer l'entrée chez le client","Obtenir un petit engagement d'abord pour en obtenir un grand ensuite","Proposer directement le gros contrat","Relancer sans arrêt"],c:1,e:"Petit oui → grand oui : l'engagement progressif facilite le passage à l'acte."},
+      {q:"L'effet de Halo en vente signifie :",a:["L'auréole dans la pub","Une qualité positive rayonne et influence la perception globale du vendeur","Un produit cache un autre","La lumière en magasin"],c:1,e:"Halo effect = un atout (belle présentation) teinte positivement la perception globale."},
+      {q:"La réciprocité (Cialdini) implique que :",a:["Le client doit toujours payer en premier","Donner quelque chose crée une obligation morale de rendre","Les remises doivent être réciproques","Le vendeur doit imiter le client"],c:1,e:"Réciprocité = offrir un échantillon, un cadeau → client se sent obligé de rendre."},
+      {q:"Le biais de confirmation du client signifie qu'il :",a:["Confirme toujours l'achat","Cherche des infos qui valident sa décision déjà prise","Change d'avis facilement","Compare objectivement"],c:1,e:"Le biais de confirmation = filtrer l'information pour confirmer ses croyances."},
+      {q:"La technique du BATNA en négociation sert à :",a:["Fermer la vente vite","Connaître sa meilleure alternative pour négocier sereinement","Baisser son prix","Convaincre par l'émotion"],c:1,e:"BATNA = savoir ce qu'on fait si on n'aboutit pas = négocier sans peur."},
+      {q:"Le neurovente s'appuie principalement sur :",a:["Les données financières","La compréhension du cerveau émotionnel et des décisions inconscientes","Les argumentaires rationnels","Les statistiques de marché"],c:1,e:"Neurovente = cerveau reptilien décide, néocortex justifie → cibler les émotions."},
+      {q:"La dissonance cognitive après achat est :",a:["Le regret d'avoir trop peu payé","Le doute post-achat sur le bien-fondé de sa décision","La satisfaction immédiate","La fidélité à la marque"],c:1,e:"Dissonance = inconfort lié au doute post-achat → le rassurer est essentiel."},
+    ],
+    2:[
+      {q:"La technique du 'oui répété' (Yes set) vise à :",a:["Faire répéter le prix au client","Obtenir plusieurs petits oui pour créer un élan positif vers le grand oui","Confirmer la commande plusieurs fois","Éviter les objections"],c:1,e:"Yes set = créer une dynamique de validation qui facilite la décision finale."},
+      {q:"L'urgence artificielle en vente est un levier de :",a:["Fidélisation","Conversion par la peur de manquer une opportunité limitée","Satisfaction client","Réduction des prix"],c:1,e:"Urgence = 'Offre valable aujourd'hui seulement' → activation du mode FOMO."},
+      {q:"Le storytelling en vente permet de :",a:["Raconter la vie du vendeur","Créer une connexion émotionnelle et ancrer le message dans la mémoire","Éviter les questions du client","Présenter les caractéristiques techniques"],c:1,e:"Story = émotion + mémoire + identification = vente plus persuasive."},
+    ],
+    3:[
+      {q:"L'influence de l'autorité (Cialdini) explique pourquoi :",a:["Les clients font confiance aux experts et figures d'autorité","Les clients résistent toujours","Le prix élevé se justifie seul","La publicité est inutile"],c:0,e:"Blouse blanche, diplôme, titre d'expert = crédibilité → conformité du client."},
+    ],
+    4:[
+      {q:"Le modèle de persuasion ELR (Elaboration Likelihood) distingue :",a:["La route centrale (arguments) et périphérique (émotions/heuristiques)","La vente directe et indirecte","Le marketing B2B et B2C","La publicité et la promotion"],c:0,e:"Route centrale = traitement analytique. Périphérique = traitement rapide par indices."},
+    ],
+  },
+  "Développement Durable":{
+    1:[
+      {q:"La RSE signifie :",a:["Rapport Social et Économique","Responsabilité Sociétale des Entreprises","Réseau de Soutien aux Employés","Règlement Social Européen"],c:1,e:"RSE = intégrer volontairement les enjeux sociaux, environnementaux et économiques."},
+      {q:"Les 3 piliers du développement durable sont :",a:["Économie, politique, culture","Économique, social, environnemental","Finance, énergie, eau","Production, consommation, recyclage"],c:1,e:"Triple bottom line : People, Planet, Profit = les 3 piliers du DD."},
+      {q:"Le bilan carbone mesure :",a:["Les émissions de CO2 et équivalents d'une organisation","Le budget de l'entreprise","Le nombre d'arbres plantés","La consommation d'eau"],c:0,e:"Bilan carbone = quantification des émissions de GES directes et indirectes."},
+      {q:"L'économie circulaire vise à :",a:["Produire plus pour vendre plus","Éliminer les déchets en réutilisant les ressources en boucle","Délocaliser la production","Réduire uniquement les coûts"],c:1,e:"Éco circulaire ≠ linéaire (extraire → fabriquer → jeter) : boucler les flux."},
+      {q:"Le greenwashing consiste à :",a:["Peindre ses locaux en vert","Communiquer sur des actions écologiques trompeuses ou exagérées","Planter des arbres pour compenser","Réduire réellement ses émissions"],c:1,e:"Greenwashing = écoblanchiment, fausses promesses vertes pour se donner bonne image."},
+      {q:"L'écolabel NF Environnement garantit :",a:["Le prix le plus bas","Des critères environnementaux et de qualité tout au long du cycle de vie","Une fabrication française","Un produit biologique"],c:1,e:"Labels écologiques = critères vérifiés indépendamment sur tout le cycle de vie produit."},
+      {q:"Le principe de pollueur-payeur signifie :",a:["L'État paie les pollutions","Celui qui pollue doit payer les coûts de dépollution","Les consommateurs paient pour la pollution","Les entreprises choisissent de payer ou non"],c:1,e:"Principe pollueur-payeur = internalisation des externalités négatives environnementales."},
+      {q:"Les ODD (Objectifs de Développement Durable) de l'ONU sont au nombre de :",a:["10","17","21","25"],c:1,e:"17 ODD adoptés en 2015 dans l'Agenda 2030 des Nations Unies."},
+      {q:"La compensation carbone consiste à :",a:["Arrêter d'émettre du CO2","Financer des projets qui réduisent le CO2 ailleurs pour compenser ses émissions","Taxer les entreprises polluantes","Planter des arbres dans ses locaux"],c:1,e:"Compensation = dernier recours après réduction maximale de ses propres émissions."},
+      {q:"L'ISO 14001 est une norme qui concerne :",a:["La qualité des produits","Le management environnemental des organisations","La sécurité alimentaire","La gestion financière"],c:1,e:"ISO 14001 = système de management environnemental certifiable."},
+    ],
+    2:[
+      {q:"L'analyse du cycle de vie (ACV) évalue :",a:["La durée de vie des salariés","L'impact environnemental d'un produit du berceau à la tombe","La rentabilité sur 5 ans","La durée de garantie produit"],c:1,e:"ACV = méthode normée (ISO 14040) pour mesurer l'impact environnemental global."},
+      {q:"La taxonomie verte européenne vise à :",a:["Classifier les espèces végétales","Définir les activités économiques considérées comme durables pour orienter les investissements","Étiqueter les produits bio","Interdire les activités polluantes"],c:1,e:"Taxonomie UE = nomenclature des activités 'vertes' pour guider la finance durable."},
+      {q:"Le scope 3 des émissions carbone comprend :",a:["Les émissions directes de l'entreprise","Les émissions indirectes de toute la chaîne de valeur (fournisseurs, clients)","Les émissions des filiales","Les émissions compensées"],c:1,e:"Scope 3 = souvent 70-90% des émissions totales. Le plus difficile à mesurer."},
+    ],
+    3:[
+      {q:"La finance durable (ESG) intègre des critères :",a:["Uniquement financiers","Environnementaux, Sociaux et de Gouvernance","Fiscaux, Sociaux et Géopolitiques","Économiques, Stratégiques et Géographiques"],c:1,e:"ESG = critères extra-financiers intégrés dans les décisions d'investissement."},
+    ],
+    4:[
+      {q:"L'accord de Paris (2015) vise à :",a:["Supprimer les énergies fossiles immédiatement","Limiter le réchauffement climatique bien en dessous de 2°C par rapport au niveau préindustriel","Créer une taxe carbone mondiale","Interdire la déforestation"],c:1,e:"Accord de Paris = engagement de 195 pays à limiter le réchauffement à 1,5-2°C."},
+    ],
+  },
+  "Culture Générale":{
+    2:[
+      {q:"Qui a théorisé la relativité restreinte ?",a:["Newton","Curie","Einstein","Bohr"],c:2,e:"Albert Einstein a publié la théorie de la relativité restreinte en 1905."},
+      {q:"Le traité de Rome (1957) a fondé :",a:["L'ONU","La CEE (ancêtre de l'UE)","L'OTAN","Le G7"],c:1,e:"Le traité de Rome a créé la Communauté Économique Européenne."},
+      {q:"Le continent le plus peuplé est :",a:["Amérique","Afrique","Europe","Asie"],c:3,e:"L'Asie représente plus de 60% de la population mondiale."},
+      {q:"Quelle est la langue la plus parlée dans le monde ?",a:["Anglais","Espagnol","Mandarin","Hindi"],c:2,e:"Le mandarin est la langue maternelle du plus grand nombre de locuteurs."},
+      {q:"La seconde guerre mondiale s'est terminée en :",a:["1944","1945","1946","1947"],c:1,e:"Le 8 mai 1945 en Europe, le 2 septembre 1945 en Asie-Pacifique."},
+    ],
+    3:[
+      {q:"Le Produit Intérieur Brut (PIB) par habitant est un indicateur de :",a:["La qualité de vie uniquement","La richesse économique moyenne par personne","La bonheur national","L'égalité des revenus"],c:1,e:"PIB/habitant = richesse produite divisée par la population."},
+      {q:"Quelle révolution industrielle a vu naître internet ?",a:["1ère (vapeur)","2ème (électricité)","3ème (informatique)","4ème (IA et numérique)"],c:2,e:"3ème révolution industrielle = informatique, électronique et internet (années 70-90)."},
+    ],
+    4:[
+      {q:"L'indice de développement humain (IDH) mesure :",a:["Uniquement le PIB","L'espérance de vie, l'éducation et le revenu","La liberté politique","La croissance économique"],c:1,e:"IDH (PNUD) = indicateur composite : santé + éducation + niveau de vie."},
+    ],
+  },
+  "Anglais":{
+    2:[
+      {q:"'To negotiate' means ?",a:["Refuser","Négocier","Commander","Livrer"],c:1,e:"To negotiate = négocier. Negotiation = négociation."},
+      {q:"'The bottom line' in business means ?",a:["La ligne du bas du tableau","Le résultat net / l'essentiel","Le délai de livraison","Le prix minimum"],c:1,e:"Bottom line = le bénéfice net, ou 'ce qui compte au final'."},
+      {q:"'Please revert' in a professional email means ?",a:["Annuler la commande","Répondre / revenir vers moi","Retourner le produit","Inverser la décision"],c:1,e:"Please revert = please reply. Très utilisé dans les emails professionnels."},
+      {q:"'Cash flow' refers to ?",a:["Le bénéfice net","Les flux de trésorerie (entrées et sorties d'argent)","Le capital social","Le chiffre d'affaires"],c:1,e:"Cash flow = flux de trésorerie. Positif = bonne santé financière."},
+      {q:"'Supply chain' means ?",a:["La chaîne de vente","La chaîne logistique / d'approvisionnement","Le réseau commercial","La chaîne de production uniquement"],c:1,e:"Supply chain = la chaîne logistique de bout en bout."},
+    ],
+    3:[
+      {q:"'To leverage' in business means ?",a:["Soulever un objet","Exploiter un avantage / capitaliser sur","Négocier à la baisse","Annuler un contrat"],c:1,e:"To leverage = utiliser un atout pour obtenir un avantage. Very corporate English."},
+      {q:"'KPI' stands for ?",a:["Key Profit Index","Key Performance Indicator","Knowledge Process Integration","Key Partner Initiative"],c:1,e:"KPI = indicateur clé de performance."},
+    ],
+    4:[
+      {q:"'Stakeholders' refers to ?",a:["Les actionnaires uniquement","Toutes les parties prenantes (clients, employés, investisseurs...)","Les fournisseurs uniquement","Les concurrents"],c:1,e:"Stakeholders = toutes les parties prenantes affectées par ou affectant l'entreprise."},
+      {q:"'Due diligence' means ?",a:["Une réunion rapide","Un audit approfondi avant une transaction","Le devoir de loyalty","La diligence du service client"],c:1,e:"Due diligence = vérification approfondie avant un investissement ou acquisition."},
+    ],
+  },
+  "Logique & Maths":{
+    2:[
+      {q:"Suite : 1, 4, 9, 16, 25, ... ?",a:["30","36","49","34"],c:1,e:"Carrés parfaits : 1²,2²,3²... → 6²=36."},
+      {q:"Marge de 30€ sur un PV de 120€, taux de marque ?",a:["20%","25%","30%","35%"],c:1,e:"Taux de marque = 30/120 × 100 = 25%."},
+      {q:"Un magasin vend 150 articles à 8€, CA total ?",a:["1050€","1200€","1500€","900€"],c:1,e:"150 × 8 = 1200€."},
+      {q:"3 personnes mangent 3 pizzas en 3h, 6 pizzas en 6h pour ?",a:["6 personnes","3 personnes","12 personnes","9 personnes"],c:1,e:"1 personne = 1 pizza/3h. 6 pizzas/6h = même rythme = 3 personnes."},
+      {q:"Si 20% des 500 clients sont VIP, combien ?",a:["50","80","100","120"],c:2,e:"20% × 500 = 100 clients VIP."},
+    ],
+    3:[
+      {q:"Suite : 2, 6, 18, 54, ... ?",a:["108","162","216","72"],c:1,e:"Raison 3 : 54×3=162."},
+      {q:"Probabilité d'obtenir pile deux fois de suite ?",a:["1/2","1/3","1/4","1/6"],c:2,e:"1/2 × 1/2 = 1/4."},
+    ],
+    4:[
+      {q:"Un article coûte 84€ HT avec 15% de marge. Prix d'achat ?",a:["70€","71€","72€","73€"],c:2,e:"PV = PA × (1+m) → 84 = PA × 1,15 → PA = 84/1,15 ≈ 73€. Attention : ici taux de marque ≠ coefficient."},
+      {q:"Si une suite géométrique a u0=3 et raison 2, u5 = ?",a:["48","64","96","32"],c:2,e:"u5 = 3 × 2⁵ = 3 × 32 = 96."},
+    ],
+  },
+  "Dynamisation":{
+    2:[
+      {q:"Une opération de dégustation vise à :",a:["Réduire les stocks","Faire découvrir et générer des achats impulsifs","Former le personnel","Fidéliser via une carte"],c:1,e:"Dégustation = animation offensive pour faire tester et déclencher l'achat."},
+      {q:"Le bon de réduction différé (BRD) est :",a:["Une remise immédiate en caisse","Un bon à valoir sur un prochain achat","Un bon cadeau","Une carte de fidélité"],c:1,e:"BRD = récompense différée = fidélisation car le client revient."},
+      {q:"Une animation 'trade' cible :",a:["Le grand public","Les distributeurs et revendeurs","Les enfants","Les médias"],c:1,e:"Trade marketing = actions orientées vers les distributeurs pour booster leur engagement."},
+    ],
+    3:[
+      {q:"Le yield management s'applique surtout :",a:["À la grande distribution alimentaire","Aux services à capacité fixe (hôtels, avions)","À la mode","Aux produits frais"],c:1,e:"Yield = prix variables selon la demande et le taux d'occupation. Hôtels, aérien."},
+    ],
+    4:[
+      {q:"Un marketing événementiel réussi génère :",a:["Uniquement des ventes immédiates","Expérience mémorable, engagement et couverture médiatique","Réduction des coûts fixes","Moins de personnel"],c:1,e:"Marketing événementiel = expérience + bouche-à-oreille + image de marque."},
+    ],
+  },
+  "CEJM":{
+    2:[
+      {q:"Le droit des sociétés régit :",a:["Les relations entre collègues","La création, fonctionnement et dissolution des sociétés","Le droit du travail","Les relations commerciales"],c:1,e:"Droit des sociétés = cadre juridique de la vie des personnes morales."},
+      {q:"La libre concurrence vise à :",a:["Protéger les monopoles","Garantir l'égalité des chances sur le marché","Fixer les prix","Contrôler les importations"],c:1,e:"La concurrence libre et non faussée = principe fondateur du marché européen."},
+      {q:"Le développement durable en entreprise s'appelle :",a:["Marketing vert","RSE (Responsabilité Sociétale des Entreprises)","Green IT","Commerce équitable"],c:1,e:"RSE = intégration volontaire des enjeux environnementaux et sociaux dans la stratégie."},
+    ],
+    3:[
+      {q:"L'intégration économique européenne suit un processus de :",a:["Zone de libre-échange → Union douanière → Marché commun → Union économique","Marché commun → Zone libre → Union politique → Fédération","Zone protégée → Monopole → Marché commun","Libre-échange → Protectionnisme → Marché unique"],c:0,e:"Processus d'intégration économique en 4 stades : ZLE → UD → MC → UEM."},
+    ],
+    4:[
+      {q:"La gouvernance d'entreprise désigne :",a:["Le management opérationnel","L'ensemble des règles de direction, contrôle et responsabilité de l'entreprise","La gestion des ressources humaines","La stratégie commerciale"],c:1,e:"Corporate governance = équilibre des pouvoirs entre actionnaires, dirigeants et parties prenantes."},
+    ],
+  },
+  "Management":{
+    2:[
+      {q:"Le management situationnel de Hersey et Blanchard adapte le style selon :",a:["Le secteur d'activité","La maturité et la motivation du collaborateur","Le chiffre d'affaires","L'âge du manager"],c:1,e:"4 styles (directif, persuasif, participatif, délégatif) selon la maturité du collaborateur."},
+      {q:"La méthode OKR (Objectives & Key Results) est utilisée par :",a:["Les entreprises publiques uniquement","Les entreprises tech (Google, Intel) pour aligner les objectifs","Les syndicats","Les cabinets comptables"],c:1,e:"OKR = Objectif ambitieux + résultats clés mesurables. Très populaire en startup."},
+      {q:"Le conflit en équipe peut être :",a:["Toujours destructeur","Parfois constructif s'il est bien géré","Ignoré sans conséquence","Résolu uniquement par le RH"],c:1,e:"Conflit constructif = stimule la créativité et améliore les décisions si bien géré."},
+    ],
+    3:[
+      {q:"La théorie X et Y de McGregor oppose :",a:["Managers juniors et seniors","La vision pessimiste (X, contraindre) vs optimiste (Y, autonomie) du travailleur","Entreprises françaises et américaines","Management opérationnel et stratégique"],c:1,e:"Théorie X = l'homme fuit le travail. Théorie Y = l'homme aime et cherche les responsabilités."},
+    ],
+    4:[
+      {q:"Le management par la valeur (Value-Based Management) vise à :",a:["Réduire les coûts à tout prix","Maximiser la création de valeur pour toutes les parties prenantes","Augmenter les dividendes uniquement","Satisfaire uniquement les actionnaires"],c:1,e:"VBM = aligner les décisions de management sur la création de valeur long terme."},
+    ],
+  },
+};
+
+// ══════════════════════════════════════
+// THEMES & FONTS
+// ══════════════════════════════════════
+const THEMES=[
+  {id:1,c1:'#F5C842',c2:'#FF4D6A',name:'Or & Rouge'},
+  {id:2,c1:'#4C7BFF',c2:'#FF4D8D',name:'Bleu & Rose'},
+  {id:3,c1:'#111',c2:'#fff',name:'Noir & Blanc'},
+  {id:4,c1:'#FF3C3C',c2:'#FFD700',name:'Rouge & Or'},
+  {id:5,c1:'#00FFA3',c2:'#7B2FFF',name:'Néon & Violet'},
+  {id:6,c1:'#FF6B35',c2:'#1A1AFF',name:'Orange & Bleu'},
+  {id:7,c1:'#E040FB',c2:'#00E5FF',name:'Magenta & Cyan'},
+  {id:8,c1:'#FF1744',c2:'#FF6D00',name:'Rouge & Orange'},
+  {id:9,c1:'#76FF03',c2:'#FF3D00',name:'Vert & Rouge'},
+  {id:10,c1:'#FFFFFF',c2:'#F5C842',name:'Blanc & Or'},
+  {id:11,c1:'#FF4081',c2:'#40C4FF',name:'Rose & Ciel'},
+  {id:12,c1:'#EEFF41',c2:'#FF1744',name:'Jaune & Rouge'},
+  {id:13,c1:'#40FFAA',c2:'#FF4040',name:'Menthe & Rouge'},
+  {id:14,c1:'#AA00FF',c2:'#FFD740',name:'Violet & Ambre'},
+  {id:15,c1:'#FF6E40',c2:'#40C4FF',name:'Corail & Ciel'},
+];
+const FONTS=[
+  {id:'outfit',family:"'Outfit',sans-serif",name:'Outfit',preview:'Aa'},
+  {id:'bebas',family:"'Bebas Neue',sans-serif",name:'Bebas Neue',preview:'Aa'},
+  {id:'georgia',family:'Georgia,serif',name:'Georgia',preview:'Aa'},
+  {id:'courier',family:"'Courier New',monospace",name:'Courier New',preview:'Aa'},
+  {id:'system',family:'-apple-system,BlinkMacSystemFont,sans-serif',name:'Système',preview:'Aa'},
+];
+let currentTheme=parseInt(localStorage.getItem('sa_theme')||'1');
+let currentFont=localStorage.getItem('sa_font')||'outfit';
+
+function applyTheme(id){ currentTheme=id; document.body.setAttribute('data-theme',id); localStorage.setItem('sa_theme',id); }
+function applyFont(id){ currentFont=id; const f=FONTS.find(x=>x.id===id); if(f) document.body.style.fontFamily=f.family; localStorage.setItem('sa_font',id); }
+
+function buildThemeGrid(){
+  document.getElementById('themeGrid').innerHTML=THEMES.map(t=>`
+    <div>
+      <div class="theme-swatch ${t.id===currentTheme?'selected':''}" 
+        style="background:linear-gradient(135deg,${t.c1},${t.c2})"
+        onclick="applyTheme(${t.id});document.querySelectorAll('.theme-swatch').forEach(s=>s.classList.remove('selected'));this.classList.add('selected')"
+        title="${t.name}"></div>
+      <div class="theme-name">${t.name}</div>
+    </div>
+  `).join('');
+}
+function buildFontGrid(){
+  document.getElementById('fontGrid').innerHTML=FONTS.map(f=>`
+    <div class="font-opt ${f.id===currentFont?'selected':''}" onclick="applyFont('${f.id}');document.querySelectorAll('.font-opt').forEach(o=>o.classList.remove('selected'));this.classList.add('selected')">
+      <span style="font-family:${f.family};font-size:16px;font-weight:600;">${f.name}</span>
+      <span style="font-family:${f.family};font-size:22px;color:var(--c1);">${f.preview}</span>
+    </div>
+  `).join('');
+}
+function openThemePicker(){ buildThemeGrid(); document.getElementById('themeModal').classList.add('open'); }
+function openFontPicker(){ buildFontGrid(); document.getElementById('fontModal').classList.add('open'); }
+
+// ══════════════════════════════════════
+// MUSIC ENGINE (Tone.js)
+// ══════════════════════════════════════
+let musicOn=false;
+let toneStarted=false;
+let musicParts=[];
+
+async function initMusic(){
+  if(toneStarted)return;
+  if(typeof Tone==='undefined'){showToast('Erreur audio','err');return;}
+  await Tone.start();
+  toneStarted=true;
+  const masterVol=new Tone.Volume(-4).toDestination();
+  const reverb=new Tone.Reverb({decay:5,wet:0.5}).connect(masterVol);
+  const delay=new Tone.FeedbackDelay({delayTime:'8n',feedback:0.3,wet:0.25}).connect(reverb);
+  const comp=new Tone.Compressor(-18,4).connect(masterVol);
+  reverb.connect(comp);
+  // Drone grave
+  const droneSynth=new Tone.Synth({oscillator:{type:'sine'},envelope:{attack:3,decay:1,sustain:1,release:4},volume:-22}).connect(reverb);
+  const dronePart=new Tone.Sequence((t,n)=>{droneSynth.triggerAttackRelease(n,'2m',t);},['A2','A2','E2','F2'],'2m');
+  // Pad epique Am progressions
+  const padSynth=new Tone.PolySynth(Tone.Synth,{oscillator:{type:'sine'},envelope:{attack:2,decay:1.5,sustain:0.8,release:4},volume:-19}).connect(reverb);
+  const padPart=new Tone.Sequence((t,c)=>{padSynth.triggerAttackRelease(c,'1m',t);},[['A2','C3','E3','G3'],['F2','A2','C3','E3'],['C3','E3','G3'],['E2','G2','B2','D3']],'1m');
+  // Melodie heroique Am
+  const leadSynth=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:0.05,decay:0.3,sustain:0.5,release:1},volume:-16}).connect(delay);
+  const mel=['A4',null,'E4',null,'F4',null,'E4',null,'D4',null,'C4',null,'B3',null,null,null,'C4',null,'D4',null,'E4',null,'D4','C4','A3',null,null,null,null,null,null,null,'F4',null,'G4',null,'A4',null,'G4',null,'E4',null,'D4',null,'C4',null,null,null,'D4',null,'E4',null,'F4',null,'G4','A4','E4',null,null,null,null,null,null,null];
+  const leadPart=new Tone.Sequence((t,n)=>{if(n)leadSynth.triggerAttackRelease(n,'8n',t);},mel,'8n');
+  // Cello contrepoint
+  const celloSynth=new Tone.Synth({oscillator:{type:'sawtooth'},envelope:{attack:0.1,decay:0.4,sustain:0.6,release:1.5},volume:-20}).connect(reverb);
+  const cMel=['A3',null,null,null,'E3',null,null,null,'F3',null,null,null,'C3',null,null,null,'C3',null,null,null,'G3',null,null,null,'A3',null,null,null,null,null,null,null];
+  const celloPart=new Tone.Sequence((t,n)=>{if(n)celloSynth.triggerAttackRelease(n,'4n',t);},cMel,'8n');
+  // Percussions epiques
+  const kick=new Tone.MembraneSynth({pitchDecay:0.08,octaves:6,envelope:{attack:0.001,decay:0.4,sustain:0,release:0.2},volume:-10}).connect(comp);
+  const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:0.001,decay:0.2,sustain:0,release:0.1},volume:-18}).connect(reverb);
+  const kickPart=new Tone.Sequence((t,h)=>{if(h)kick.triggerAttackRelease('C1','8n',t);},[1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0],'16n');
+  const snarePart=new Tone.Sequence((t,h)=>{if(h)snare.triggerAttackRelease('8n',t);},[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1],'16n');
+  // Arpege cristallin
+  const crystalSynth=new Tone.Synth({oscillator:{type:'sine'},envelope:{attack:0.01,decay:0.3,sustain:0.1,release:0.8},volume:-26}).connect(delay);
+  const arpPart=new Tone.Sequence((t,n)=>{crystalSynth.triggerAttackRelease(n,'16n',t);},['A5','E5','A5','C6','E5','A5','E5','C5','A4','E5','G5','A5','E5','C5','E5','A4'],'16n');
+  Tone.Transport.bpm.value=76;
+  Tone.Transport.loop=true;
+  Tone.Transport.loopEnd='8m';
+  musicParts=[dronePart,padPart,leadPart,celloPart,kickPart,snarePart,arpPart];
+}
+
+async function toggleMusic(){
+  musicOn=!musicOn;
+  const icon=musicOn?'🎵':'🔇';
+  document.getElementById('musicBtn').textContent=icon;
+  if(document.getElementById('homeMusIcon'))document.getElementById('homeMusIcon').textContent=icon;
+  if(musicOn){
+    try{
+      await initMusic();
+      musicParts.forEach(p=>p.start(0));
+      Tone.Transport.start();
+      showToast('🎵 Musique activée','ok');
+    }catch(e){
+      console.error('Music error:',e);
+      musicOn=false;
+      document.getElementById('musicBtn').textContent='🔇';
+    }
+  } else {
+    musicParts.forEach(p=>p.stop());
+    Tone.Transport.stop();
+    showToast('🔇 Musique désactivée','ok');
+  }
+}
+
+// ══════════════════════════════════════
+// CANVAS — themed objects
+// ══════════════════════════════════════
+const canvas=document.getElementById('bgCanvas');
+const ctx=canvas.getContext('2d');
+const BG_OBJECTS=['📚','🔢','🔤','🏅','💰','📊','🎯','⭐','📝','🏆','💡','🔑','📈','✏️','🎓','🔢','🔤','📚','🏅','🎯'];
+let objs=[];
+let bgTime=0;
+const COLORS=['rgba(245,200,66,','rgba(255,77,106,','rgba(76,123,255,','rgba(0,255,163,','rgba(255,107,53,','rgba(224,64,251,','rgba(0,229,255,'];
+function initCanvas(){
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+  objs=[];
+  // Orbes colorées en fond
+  for(let i=0;i<12;i++){
+    objs.push({
+      type:'orb',
+      x:Math.random()*canvas.width,
+      y:Math.random()*canvas.height,
+      vx:(Math.random()-.5)*2.2,
+      vy:(Math.random()-.5)*2.2,
+      r:Math.random()*140+60,
+      color:COLORS[Math.floor(Math.random()*COLORS.length)],
+      opacity:Math.random()*.18+.07,
+      pulse:Math.random()*Math.PI*2,
+    });
+  }
+  // Emojis plus nombreux, plus gros, plus rapides
+  for(let i=0;i<32;i++){
+    objs.push({
+      type:'emoji',
+      emoji:BG_OBJECTS[Math.floor(Math.random()*BG_OBJECTS.length)],
+      x:Math.random()*canvas.width,
+      y:Math.random()*canvas.height,
+      vx:(Math.random()-.5)*3.5,
+      vy:(Math.random()-.5)*3.5,
+      size:Math.random()*32+14,
+      rot:Math.random()*360,
+      rotSpeed:(Math.random()-.5)*4,
+      opacity:Math.random()*.55+.15,
+      color:COLORS[Math.floor(Math.random()*COLORS.length)],
+    });
+  }
+}
+function animCanvas(){
+  bgTime+=0.012;
+  // Fond dégradé dynamique
+  const grd=ctx.createLinearGradient(
+    canvas.width*(.5+.5*Math.sin(bgTime*.3)),0,
+    canvas.width*(.5+.5*Math.cos(bgTime*.2)),canvas.height
+  );
+  grd.addColorStop(0,'#07080F');
+  grd.addColorStop(.35,'#120820');
+  grd.addColorStop(.65,'#08100F');
+  grd.addColorStop(1,'#0A0815');
+  ctx.fillStyle=grd;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  objs.forEach(o=>{
+    if(o.type==='orb'){
+      o.x+=o.vx; o.y+=o.vy; o.pulse+=0.025;
+      if(o.x<-o.r)o.x=canvas.width+o.r;
+      if(o.x>canvas.width+o.r)o.x=-o.r;
+      if(o.y<-o.r)o.y=canvas.height+o.r;
+      if(o.y>canvas.height+o.r)o.y=-o.r;
+      const r=o.r*(1+.12*Math.sin(o.pulse));
+      const g2=ctx.createRadialGradient(o.x,o.y,0,o.x,o.y,r);
+      g2.addColorStop(0,o.color+(o.opacity+.06*Math.sin(o.pulse))+')');
+      g2.addColorStop(1,o.color+'0)');
+      ctx.beginPath();
+      ctx.arc(o.x,o.y,r,0,Math.PI*2);
+      ctx.fillStyle=g2;
+      ctx.fill();
+    } else {
+      o.x+=o.vx; o.y+=o.vy; o.rot+=o.rotSpeed;
+      if(o.x<-40)o.x=canvas.width+40;
+      if(o.x>canvas.width+40)o.x=-40;
+      if(o.y<-40)o.y=canvas.height+40;
+      if(o.y>canvas.height+40)o.y=-40;
+      ctx.save();
+      ctx.globalAlpha=o.opacity;
+      ctx.translate(o.x,o.y);
+      ctx.rotate(o.rot*Math.PI/180);
+      ctx.font=`${o.size}px serif`;
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(o.emoji,0,0);
+      ctx.restore();
+    }
+  });
+  requestAnimationFrame(animCanvas);
+}
+window.addEventListener('resize',initCanvas);
+initCanvas();
+animCanvas();
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let APP={
+  user:null,profile:null,
+  currentCat:null,currentDiff:1,
+  questions:[],qIndex:0,
+  score:0,correct:0,streak:0,bestStreak:0,
+  timer:null,timeLeft:30,answered:false,
+  lbFilter:'global',
+  roomCode:null,isHost:false,multiSub:null,
+  sessionCats:[],
+  sessionStart:0,
+  consecutiveWrong:0,
+  quizStartTime:0,
+  diffPlayedInCat:{},
+  wrongCount:0,
+};
+const DIFF_TIME={1:30,2:25,3:20,4:15};
+const DIFF_PTS={1:25,2:50,3:80,4:120};
+const DIFF_NAME={1:'Débutant',2:'Intermédiaire',3:'Avancé',4:'Expert'};
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+window.addEventListener('DOMContentLoaded',async()=>{
+  applyTheme(currentTheme);
+  applyFont(currentFont);
+  buildCatGrid();
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){APP.user=session.user;await loadProfile();showLoggedIn();}
+  else showPage('auth');
+  sb.auth.onAuthStateChange(async(ev,session)=>{
+    if(ev==='SIGNED_IN'&&session){APP.user=session.user;await loadProfile();showLoggedIn();}
+    if(ev==='SIGNED_OUT'){APP.user=null;APP.profile=null;showPage('auth');document.getElementById('mainHeader').style.display='none';document.getElementById('bnav').classList.remove('show');}
+  });
+  APP.sessionStart=Date.now();
+});
+
+function showLoggedIn(){
+  document.getElementById('mainHeader').style.display='flex';
+  document.getElementById('bnav').classList.add('show');
+  updateHeaderUI();
+  showPage('home');
+}
+
+// ══════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════
+function switchTab(t){
+  document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(i===0&&t==='login')||(i===1&&t==='signup')));
+  document.getElementById('form-login').style.display=t==='login'?'block':'none';
+  document.getElementById('form-signup').style.display=t==='signup'?'block':'none';
+  document.getElementById('form-reset').style.display=t==='reset'?'block':'none';
+  document.getElementById('authErr').style.display='none';
+  document.getElementById('authOk').style.display='none';
+}
+async function login(){
+  const e=document.getElementById('loginEmail').value.trim();
+  const p=document.getElementById('loginPwd').value;
+  if(!e||!p) return showAuthErr('Remplis tous les champs !');
+  const {error}=await sb.auth.signInWithPassword({email:e,password:p});
+  if(error) showAuthErr('Email ou mot de passe incorrect.');
+}
+async function signup(){
+  const n=document.getElementById('signupName').value.trim();
+  const e=document.getElementById('signupEmail').value.trim();
+  const p=document.getElementById('signupPwd').value;
+  const r=document.getElementById('signupRole').value;
+  if(!n||!e||!p) return showAuthErr('Remplis tous les champs !');
+  if(p.length<6) return showAuthErr('Mot de passe min 6 caractères.');
+  // emailRedirectTo vide = pas de confirmation email requise
+  const {data,error}=await sb.auth.signUp({email:e,password:p,options:{data:{username:n,role:r},emailRedirectTo:null}});
+  if(error) return showAuthErr(error.message);
+  if(data.user){
+    await createProfile(data.user,n,r);
+    // Connexion directe sans attendre confirmation
+    await sb.auth.signInWithPassword({email:e,password:p});
+    showToast('Bienvenue '+n+' ! 🎉','ok');
+  }
+}
+async function resetPassword(){
+  const e=document.getElementById('resetEmail').value.trim();
+  if(!e) return showAuthErr('Entre ton adresse email.');
+  const {error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:window.location.href});
+  if(error) return showAuthErr('Erreur : '+error.message);
+  const ok=document.getElementById('authOk');
+  ok.textContent='📧 Email envoyé ! Vérifie ta boîte mail.';
+  ok.style.display='block';
+  document.getElementById('authErr').style.display='none';
+}
+function showAuthErr(m){const el=document.getElementById('authErr');el.textContent=m;el.style.display='block';}
+async function logout(){await sb.auth.signOut();}
+
+// ══════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════
+async function createProfile(user,username,role='eleve'){
+  try{await sb.from('profiles').upsert({id:user.id,username,total_score:0,games_played:0,best_streak:0,xp:0,role,avatar:'😊',unlocked_avatars:JSON.stringify(['av1']),unlocked_secret_avatars:JSON.stringify([]),unlocked_trophies:JSON.stringify([]),played_categories:JSON.stringify([]),multi_games:0,perfect_games:0,created_at:new Date().toISOString()});}catch(e){}
+}
+async function loadProfile(){
+  try{
+    const {data,error}=await sb.from('profiles').select('*').eq('id',APP.user.id).single();
+    if(data&&!error){
+      APP.profile=data;
+      // Mettre à jour le cache local avec les données fraîches
+      try{localStorage.setItem('sa_profile_'+APP.user.id,JSON.stringify({...data,_ts:Date.now()}));}catch(e){}
+    } else {
+      // Essayer de restaurer depuis le cache localStorage
+      const cached=localStorage.getItem('sa_profile_'+APP.user.id);
+      if(cached){
+        try{
+          const parsed=JSON.parse(cached);
+          APP.profile=parsed;
+          // Repousser les données cachées vers Supabase
+          delete parsed._ts;
+          await sb.from('profiles').upsert({id:APP.user.id,...parsed}).catch(()=>{});
+          console.log('Profil restauré depuis le cache local');
+        }catch(e){}
+      } else {
+        const n=APP.user.user_metadata?.username||APP.user.email.split('@')[0];
+        const r=APP.user.user_metadata?.role||'eleve';
+        await createProfile(APP.user,n,r);
+        APP.profile={id:APP.user.id,username:n,total_score:0,games_played:0,best_streak:0,xp:0,role:r,avatar:'😊',unlocked_avatars:JSON.stringify(['av1']),unlocked_secret_avatars:JSON.stringify([]),unlocked_trophies:JSON.stringify([]),played_categories:JSON.stringify([]),multi_games:0,perfect_games:0};
+      }
+    }
+  }catch(e){
+    // Fallback cache local
+    const cached=localStorage.getItem('sa_profile_'+APP.user.id);
+    if(cached){try{APP.profile=JSON.parse(cached);}catch(er){}}
+    else{
+      const n=APP.user.user_metadata?.username||APP.user.email.split('@')[0];
+      APP.profile={id:APP.user.id,username:n,total_score:0,games_played:0,best_streak:0,xp:0,role:'eleve',avatar:'😊',unlocked_avatars:JSON.stringify(['av1']),unlocked_secret_avatars:JSON.stringify([]),unlocked_trophies:JSON.stringify([]),played_categories:JSON.stringify([]),multi_games:0,perfect_games:0};
+    }
+  }
+}
+async function saveProfile(upd){
+  if(!APP.user)return;
+  Object.assign(APP.profile,upd);
+  const p=APP.profile;
+  const payload={
+    username:p.username||'Joueur',
+    total_score:p.total_score||0,
+    games_played:p.games_played||0,
+    best_streak:p.best_streak||0,
+    xp:p.xp||0,
+    role:p.role||'eleve',
+    avatar:p.avatar||'😊',
+    multi_games:p.multi_games||0,
+    perfect_games:p.perfect_games||0,
+    unlocked_avatars:typeof p.unlocked_avatars==='string'?p.unlocked_avatars:JSON.stringify(p.unlocked_avatars||['av1']),
+    unlocked_secret_avatars:typeof p.unlocked_secret_avatars==='string'?p.unlocked_secret_avatars:JSON.stringify(p.unlocked_secret_avatars||[]),
+    unlocked_trophies:typeof p.unlocked_trophies==='string'?p.unlocked_trophies:JSON.stringify(p.unlocked_trophies||[]),
+    played_categories:typeof p.played_categories==='string'?p.played_categories:JSON.stringify(p.played_categories||[]),
+  };
+  // Sauvegarde locale immédiate (filet de sécurité)
+  try{localStorage.setItem('sa_profile_'+APP.user.id,JSON.stringify({...payload,id:APP.user.id,_ts:Date.now()}));}catch(e){}
+  // Sauvegarde Supabase
+  try{
+    const {error}=await sb.from('profiles').update(payload).eq('id',APP.user.id);
+    if(error){
+      // Fallback: upsert si update échoue (ex: row inexistante)
+      const {error:e2}=await sb.from('profiles').upsert({id:APP.user.id,...payload});
+      if(e2)console.error('saveProfile upsert error:',e2);
+    }
+  }catch(e){console.error('saveProfile exception:',e);}
+}
+function getUnlockedAvatars(){
+  try{return JSON.parse(APP.profile?.unlocked_avatars||'["av1"]');}catch(e){return['av1'];}
+}
+function getSecretAvatars(){
+  try{return JSON.parse(APP.profile?.unlocked_secret_avatars||'[]');}catch(e){return[];}
+}
+function getPlayedCats(){
+  try{return JSON.parse(APP.profile?.played_categories||'[]');}catch(e){return[];}
+}
+function getUnlockedTrophies(){
+  try{return JSON.parse(APP.profile?.unlocked_trophies||'[]');}catch(e){return[];}
+}
+
+function updateHeaderUI(){
+  if(!APP.profile)return;
+  document.getElementById('headerAv').textContent=APP.profile.avatar||'😊';
+  document.getElementById('headerName').textContent=APP.profile.username||'Joueur';
+}
+
+async function renderProfile(){
+  if(!APP.user)return;
+  try{
+    const {data:fresh}=await sb.from('profiles').select('*').eq('id',APP.user.id).single();
+    if(fresh)Object.assign(APP.profile,fresh);
+  }catch(e){}
+  const p=APP.profile;if(!p)return;
+  document.getElementById('pAvBig').textContent=p.avatar||'😊';
+  document.getElementById('pName').textContent=p.username||'Joueur';
+  document.getElementById('pEmail').textContent=APP.user?.email||'';
+  document.getElementById('pScore').textContent=(p.total_score||0).toLocaleString();
+  document.getElementById('pGames').textContent=p.games_played||0;
+  document.getElementById('pStreak').textContent=p.best_streak||0;
+  try{
+    const {data:rd}=await sb.from('profiles').select('id').order('total_score',{ascending:false});
+    if(rd){const rank=rd.findIndex(r=>r.id===APP.user.id)+1;document.getElementById('pRank').textContent='#'+(rank>0?rank:'-');}
+  }catch(e){}
+  const xp=p.xp||0,level=Math.floor(xp/300)+1,xpIn=xp%300;
+  document.getElementById('xpLvl').textContent='Niveau '+level;
+  document.getElementById('xpProg').textContent=xpIn+'/300 XP';
+  document.getElementById('xpFill').style.width=(xpIn/300*100)+'%';
+  updateHeaderUI();
+  renderAvatarsGrid();
+  renderTrophiesGrid();
+}
+
+function renderAvatarsGrid(){
+  const unlocked=getUnlockedAvatars();
+  const secrets=getSecretAvatars();
+  const currentAv=APP.profile?.avatar||'😊';
+  const xp=APP.profile?.xp||0;
+  const level=Math.floor(xp/300)+1;
+  const el=document.getElementById('avatarsGrid');
+  if(!el)return;
+  const allUnlocked=new Set(unlocked);
+  LEVEL_AVATARS.forEach(av=>{if(level>=av.level)allUnlocked.add(av.id);});
+  el.innerHTML=[...LEVEL_AVATARS,...SECRET_AVATARS].map(av=>{
+    const isUnlocked=av.secret?secrets.includes(av.id):allUnlocked.has(av.id);
+    const isActive=currentAv===av.emoji&&isUnlocked;
+    return`<div class="av-item ${isUnlocked?'unlocked':'locked'}" onclick="${isUnlocked?`equipAvatar('${av.emoji}')`:''}" title="${isUnlocked?av.name:'Verrouillé'}">
+      ${isActive?'<div class="av-active"></div>':''}
+      <span class="av-emoji">${isUnlocked?av.emoji:'🔒'}</span>
+      <div class="av-name">${isUnlocked?av.name:'???'}</div>
+      ${!isUnlocked&&av.level?`<div style="font-size:9px;color:var(--muted);">Niv.${av.level}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function equipAvatar(emoji){
+  await saveProfile({avatar:emoji});
+  updateHeaderUI();
+  document.getElementById('pAvBig').textContent=emoji;
+  renderAvatarsGrid();
+  renderAvatarPickerGrid();
+  closeModal('avatarModal');
+  showToast('Avatar équipé ! '+emoji,'ok');
+}
+
+function openAvatarPicker(){
+  renderAvatarPickerGrid();
+  document.getElementById('avatarModal').classList.add('open');
+}
+function renderAvatarPickerGrid(){
+  const unlocked=getUnlockedAvatars();
+  const secrets=getSecretAvatars();
+  const allUnlockedPicker=new Set(unlocked);
+  LEVEL_AVATARS.forEach(av=>{if(level>=av.level)allUnlockedPicker.add(av.id);});
+  document.getElementById('avatarPickerGrid').innerHTML=[...LEVEL_AVATARS,...SECRET_AVATARS].map(av=>{
+    const isUnlocked=av.secret?secrets.includes(av.id):allUnlockedPicker.has(av.id);
+    return`<div class="av-item ${isUnlocked?'unlocked':'locked'}" onclick="${isUnlocked?`equipAvatar('${av.emoji}')`:''}" title="${isUnlocked?av.name:'???'}">
+      <span class="av-emoji">${isUnlocked?av.emoji:'🔒'}</span>
+      <div class="av-name">${isUnlocked?av.name:'???'}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTrophiesGrid(){
+  const unlocked=getUnlockedTrophies();
+  const cats=getPlayedCats();
+  const p=APP.profile||{};
+  const tierLabel={platinum:'PLATINE',gold:'OR',silver:'ARGENT',bronze:'BRONZE'};
+  document.getElementById('trophiesGrid').innerHTML=TROPHIES.map(t=>{
+    const isUnlocked=unlocked.includes(t.id);
+    const isPlatinum=t.tier==='platinum';
+    // Description visible for all non-platinum trophies, hidden only for platinum locked
+    const showDesc=!isPlatinum||isUnlocked;
+    return`<div class="trophy-card ${isUnlocked?'unlocked':'locked'}" style="--trophy-color:${t.color}">
+      <div class="trophy-icon">${t.icon}</div>
+      <div class="trophy-tier">${tierLabel[t.tier]||t.tier}</div>
+      <div class="trophy-name">${t.name}</div>
+      <div class="trophy-desc">${showDesc?t.desc:'Trophée mystère — à toi de trouver...'}</div>
+      ${isUnlocked?'<div class="trophy-progress" style="color:'+t.color+'">✓ Débloqué !</div>':'<div class="trophy-progress">🔒 Verrouillé</div>'}
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════
+// UNLOCK SYSTEM
+// ══════════════════════════════════════
+async function checkUnlocks(){
+  if(!APP.profile||!APP.user)return;
+  try{const {data:f}=await sb.from('profiles').select('*').eq('id',APP.user.id).single();if(f)Object.assign(APP.profile,f);}catch(e){}
+  const p=APP.profile;
+  const xp=p.xp||0;
+  const level=Math.floor(xp/300)+1;
+  const unlocked=getUnlockedAvatars();
+  const cats=getPlayedCats();
+  const unlockedTrophies=getUnlockedTrophies();
+  const secrets=getSecretAvatars();
+  let newAvatars=[...unlocked];
+  LEVEL_AVATARS.forEach(av=>{
+    if(level>=av.level&&!newAvatars.includes(av.id)){
+      newAvatars.push(av.id);
+      setTimeout(()=>showUnlockToast(av.emoji,'AVATAR DÉBLOQUÉ !','Niveau '+av.level+' — '+av.name),800);
+    }
+  });
+  if(newAvatars.length!==unlocked.length)await saveProfile({unlocked_avatars:JSON.stringify(newAvatars)});
+  let rankVal=99;
+  try{const {data:rd}=await sb.from('profiles').select('id').order('total_score',{ascending:false});if(rd)rankVal=rd.findIndex(r=>r.id===APP.user?.id)+1||99;}catch(e){}
+  const extP={...p,rank:rankVal,secret_avatars:secrets.length,trophy_count:unlockedTrophies.length};
+  let newTrophies=[...unlockedTrophies];
+  TROPHIES.forEach(t=>{
+    if(!newTrophies.includes(t.id)&&t.check(extP,cats)){
+      newTrophies.push(t.id);
+      setTimeout(()=>showUnlockToast(t.icon,'TROPHÉE '+t.tier.toUpperCase()+' !',t.name),1200);
+    }
+  });
+  if(newTrophies.length!==unlockedTrophies.length)await saveProfile({unlocked_trophies:JSON.stringify(newTrophies)});
+}
+
+async function checkSecretQuests(){
+  if(!APP.profile)return;
+  const secrets=getSecretAvatars();
+  let newSecrets=[...secrets];
+
+  const now=new Date();
+  const hour=now.getHours(),min=now.getMinutes();
+  const day=now.getDay();
+
+  // sec1: 3 wrong in a row
+  if(APP.consecutiveWrong>=3&&!newSecrets.includes('sec1')){
+    newSecrets.push('sec1');
+    showUnlockToast(SECRET_AVATARS[0].emoji,'AVATAR SECRET !','Tu as découvert un avatar caché... 🤡');
+  }
+  // sec3: midnight
+  if(hour===0&&min<=5&&!newSecrets.includes('sec3')){
+    newSecrets.push('sec3');
+    showUnlockToast(SECRET_AVATARS[2].emoji,'AVATAR SECRET !','Tu joues à minuit ? Respect 🎭');
+  }
+  // sec4: score=0
+  if(APP.score===0&&APP.qIndex>=10&&!newSecrets.includes('sec4')){
+    newSecrets.push('sec4');
+    showUnlockToast(SECRET_AVATARS[3].emoji,'AVATAR SECRET !','0/10... c\'est un record 🦄');
+  }
+  // sec5: 5 different cats in session
+  if(APP.sessionCats.length>=5&&!newSecrets.includes('sec5')){
+    newSecrets.push('sec5');
+    showUnlockToast(SECRET_AVATARS[4].emoji,'AVATAR SECRET !','5 catégories dans la même session 🌈');
+  }
+  // sec7: streak 5
+  if(APP.streak>=5&&!newSecrets.includes('sec7')){
+    newSecrets.push('sec7');
+    showUnlockToast(SECRET_AVATARS[6].emoji,'AVATAR SECRET !','5 bonnes réponses d\'affilée 🎪');
+  }
+  // sec8: Sunday
+  if(day===0&&!newSecrets.includes('sec8')){
+    newSecrets.push('sec8');
+    showUnlockToast(SECRET_AVATARS[7].emoji,'AVATAR SECRET !','Tu joues même le dimanche ! 🧿');
+  }
+  // sec10: level 10
+  const level=Math.floor((APP.profile.xp||0)/300)+1;
+  if(level>=10&&!newSecrets.includes('sec10')){
+    newSecrets.push('sec10');
+    showUnlockToast(SECRET_AVATARS[9].emoji,'AVATAR SECRET !','Niveau 10 atteint — tu es une légende 👁️');
+  }
+
+  if(newSecrets.length!==secrets.length) await saveProfile({unlocked_secret_avatars:JSON.stringify(newSecrets)});
+}
+
+// Special "bouziatslp" check (called from quiz)
+async function checkBouziat(){
+  const secrets=getSecretAvatars();
+  if(!secrets.includes('sec2')){
+    const newSecrets=[...secrets,'sec2'];
+    await saveProfile({unlocked_secret_avatars:JSON.stringify(newSecrets)});
+    showUnlockToast(SECRET_AVATARS[1].emoji,'AVATAR SECRET !','bouziatslp... tu l\'as trouvé 👾');
+  }
+}
+
+function showUnlockToast(emoji,title,sub){
+  const t=document.getElementById('unlockToast');
+  document.getElementById('unlockEmoji').textContent=emoji;
+  document.getElementById('unlockTitle').textContent=title;
+  document.getElementById('unlockSub').textContent=sub;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ══════════════════════════════════════
+// PAGES
+// ══════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.bni').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+  if(id==='profile') renderProfile();
+  if(id==='leaderboard') renderLeaderboard();
+  document.getElementById('scoreFloat').classList.toggle('show',id==='quiz');
+  document.getElementById('bnav').style.display=id==='auth'?'none':'';
+}
+
+// ══════════════════════════════════════
+// CATEGORIES
+// ══════════════════════════════════════
+let catSearch='',catType='all';
+function buildCatGrid(){
+  const grid=document.getElementById('catsGrid');
+  const filtered=CATS.filter(c=>{
+    const ms=c.id.toLowerCase().includes(catSearch.toLowerCase())||c.desc.toLowerCase().includes(catSearch.toLowerCase());
+    const mt=catType==='all'||c.type===catType;
+    return ms&&mt;
+  });
+  grid.innerHTML=filtered.map(c=>`
+    <div class="cat-card" onclick="openDiff('${c.id}')">
+      <div class="cat-icon">${c.icon}</div>
+      <div class="cat-name">${c.id}</div>
+      <div class="cat-desc">${c.desc}</div>
+      <div class="cat-meta">
+        <div class="cat-qc">${QB[c.id]?Object.values(QB[c.id]).reduce((s,a)=>s+a.length,0):0} questions</div>
+        <div class="cat-lvls">${[1,2,3,4].map(l=>`<div class="lvl-dot ${QB[c.id]&&QB[c.id][l]?'on':''}"></div>`).join('')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+function filterCats(v){catSearch=v;buildCatGrid();}
+function filterCatType(t,btn){catType=t;document.querySelectorAll('.cf-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');buildCatGrid();}
+
+// ══════════════════════════════════════
+// DIFFICULTY
+// ══════════════════════════════════════
+function openDiff(catId){
+  APP.currentCat=catId;APP.currentDiff=1;
+  document.getElementById('diffCat').textContent=catId;
+  document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('sel',parseInt(b.dataset.d)===1));
+  document.getElementById('diffModal').classList.add('open');
+}
+function selDiff(d){APP.currentDiff=d;document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('sel',parseInt(b.dataset.d)===d));}
+function startSolo(){closeModal('diffModal');closeModal('multiModal');launchQuiz();}
+
+// ══════════════════════════════════════
+// QUIZ ENGINE
+// ══════════════════════════════════════
+function launchQuiz(){
+  const pool=QB[APP.currentCat]?.[APP.currentDiff]||QB[APP.currentCat]?.[1]||[];
+  if(!pool.length){showToast('Questions bientôt disponibles !','err');return;}
+  APP.questions=shuffle([...pool]).slice(0,Math.min(10,pool.length));
+  APP.qIndex=0;APP.score=0;APP.correct=0;APP.streak=0;APP.bestStreak=0;
+  APP.consecutiveWrong=0;APP.wrongCount=0;APP.quizStartTime=Date.now();
+  if(!APP.sessionCats.includes(APP.currentCat)) APP.sessionCats.push(APP.currentCat);
+  document.getElementById('qCatBadge').textContent=APP.currentCat;
+  document.getElementById('qDiffBadge').textContent='⭐'.repeat(APP.currentDiff)+' '+DIFF_NAME[APP.currentDiff];
+  document.getElementById('sfNum').textContent='0';
+  showPage('quiz');
+  renderQuestion();
+}
+
+function renderQuestion(){
+  if(APP.qIndex>=APP.questions.length){endQuiz();return;}
+  const q=APP.questions[APP.qIndex];
+  APP.answered=false;APP.timeLeft=DIFF_TIME[APP.currentDiff];
+  document.getElementById('qTag').textContent='Question '+(APP.qIndex+1);
+  document.getElementById('qNumBadge').textContent='Q '+(APP.qIndex+1)+'/'+APP.questions.length;
+  document.getElementById('qText').textContent=q.q;
+  document.getElementById('progFill').style.width=(APP.qIndex/APP.questions.length*100)+'%';
+  document.getElementById('feedback').className='feedback';
+  updateTimerUI(APP.timeLeft);
+  const letters=['A','B','C','D'];
+  // Store current question ref for safe onclick (avoids escaping issues)
+  APP.currentQ=q;
+  document.getElementById('answers').innerHTML=q.a.map((a,i)=>`
+    <button class="ans-btn" id="ansBtn${i}" onclick="answerByIdx(${i})">
+      <span class="ans-letter">${letters[i]}</span>${escH(a)}
+    </button>
+  `).join('');
+  if(APP.timer)clearInterval(APP.timer);
+  APP.timer=setInterval(()=>{APP.timeLeft--;updateTimerUI(APP.timeLeft);if(APP.timeLeft<=0){clearInterval(APP.timer);if(!APP.answered)timeUp();}},1000);
+}
+
+function updateTimerUI(t){
+  document.getElementById('timerNum').textContent=t;
+  const max=DIFF_TIME[APP.currentDiff];
+  const r=25,circ=2*Math.PI*r;
+  const circle=document.getElementById('timerCircle');
+  circle.style.strokeDasharray=circ;
+  circle.style.strokeDashoffset=circ*(1-t/max);
+  const col=t>max*.5?'var(--c1)':t>max*.25?'#FB923C':'var(--c2)';
+  circle.style.stroke=col;
+  document.getElementById('timerNum').style.color=col;
+}
+
+// Safe answer handler — uses APP.currentQ ref, no escaping issues
+function answerByIdx(chosen){
+  if(APP.answered)return;
+  const q=APP.currentQ;
+  if(!q)return;
+  const btn=document.getElementById('ansBtn'+chosen);
+  answer(btn,chosen,q.c,q.e);
+}
+
+function answer(btn,chosen,correct,expl){
+  if(APP.answered)return;
+  APP.answered=true;
+  clearInterval(APP.timer);
+  // Lock all buttons immediately
+  document.querySelectorAll('.ans-btn').forEach(b=>{b.style.pointerEvents='none';b.disabled=true;});
+  const ok=(chosen===correct);
+  // Show correct in green always
+  for(let i=0;i<4;i++){
+    const b=document.getElementById('ansBtn'+i);
+    if(b&&i===correct)b.classList.add('correct');
+  }
+  if(ok){
+    if(btn)btn.classList.remove('wrong');
+    const pts=DIFF_PTS[APP.currentDiff];
+    APP.score+=pts;APP.correct++;APP.streak++;APP.consecutiveWrong=0;
+    if(APP.streak>APP.bestStreak)APP.bestStreak=APP.streak;
+    document.getElementById('sfNum').textContent=APP.score;
+    if(btn)popScore(btn,'+'+pts);
+    showFeedback(true,expl);
+    checkSecretQuests();
+  }else{
+    if(btn)btn.classList.add('wrong');
+    APP.streak=0;APP.consecutiveWrong++;APP.wrongCount++;
+    showFeedback(false,expl);
+    checkSecretQuests();
+  }
+  setTimeout(()=>{APP.qIndex++;renderQuestion();},2400);
+}
+
+function timeUp(){
+  if(APP.answered)return;
+  APP.answered=true;
+  clearInterval(APP.timer);
+  APP.streak=0;APP.consecutiveWrong++;
+  const q=APP.questions[APP.qIndex];
+  if(!q)return;
+  document.querySelectorAll('.ans-btn').forEach((b,idx)=>{
+    b.disabled=true;
+    b.style.pointerEvents='none';
+    if(idx===q.c)b.classList.add('correct');
+  });
+  showFeedback(false,'⏱ Temps écoulé ! '+q.e);
+  setTimeout(()=>{APP.qIndex++;renderQuestion();},2400);
+}
+
+function showFeedback(ok,expl){
+  document.getElementById('fbIcon').textContent=ok?'✅':'❌';
+  document.getElementById('fbTitle').textContent=ok?'Bonne réponse ! '+('🔥'.repeat(Math.min(APP.streak,3))):'Mauvaise réponse';
+  document.getElementById('fbDesc').textContent=expl;
+  document.getElementById('feedback').className='feedback show '+(ok?'ok':'bad');
+}
+
+function popScore(btn,text){
+  const rect=btn.getBoundingClientRect();
+  const el=document.createElement('div');
+  el.className='score-pop';el.textContent=text;
+  el.style.left=(rect.left+rect.width/2-24)+'px';
+  el.style.top=(rect.top-10)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1300);
+}
+
+// ══════════════════════════════════════
+// END QUIZ
+// ══════════════════════════════════════
+async function endQuiz(){
+  clearInterval(APP.timer);
+  const pct=Math.round(APP.correct/APP.questions.length*100);
+  let trophy='💪',title='CONTINUE !';
+  if(pct===100){trophy='🏆';title='PARFAIT !';}
+  else if(pct>=80){trophy='🥇';title='EXCELLENT !';}
+  else if(pct>=60){trophy='🥈';title='BIEN JOUÉ !';}
+  else if(pct>=40){trophy='🥉';title='PAS MAL !';}
+  document.getElementById('rTrophy').textContent=trophy;
+  document.getElementById('rTitle').textContent=title;
+  document.getElementById('rSub').textContent=(APP.profile?.username||'Joueur')+' — '+APP.currentCat+' '+DIFF_NAME[APP.currentDiff];
+  document.getElementById('rScore').textContent=APP.score;
+  document.getElementById('rCorrect').textContent=APP.correct+'/'+APP.questions.length;
+  document.getElementById('replayBtn').onclick=()=>{showPage('categories');};
+  showPage('result');
+  try{
+    await sb.from('scores').insert({user_id:APP.user?.id,username:APP.profile?.username||'Joueur',category:APP.currentCat,difficulty:APP.currentDiff,score:APP.score,correct:APP.correct,total:APP.questions.length,role:APP.profile?.role||'eleve',played_at:new Date().toISOString()});
+    const newTotal=(APP.profile?.total_score||0)+APP.score;
+    const newGames=(APP.profile?.games_played||0)+1;
+    const newStreak=Math.max(APP.profile?.best_streak||0,APP.bestStreak);
+    const newXP=(APP.profile?.xp||0)+Math.round(APP.score/5);
+    const newPerfect=(APP.profile?.perfect_games||0)+(APP.correct===APP.questions.length?1:0);
+    const cats=getPlayedCats();
+    if(!cats.includes(APP.currentCat))cats.push(APP.currentCat);
+    await saveProfile({total_score:newTotal,games_played:newGames,best_streak:newStreak,xp:newXP,perfect_games:newPerfect,played_categories:JSON.stringify(cats)});
+    const {data:rankData}=await sb.from('profiles').select('id').order('total_score',{ascending:false});
+    if(rankData){const rank=rankData.findIndex(r=>r.id===APP.user?.id)+1;document.getElementById('rRank').textContent='#'+(rank>0?rank:'-');}
+    await checkUnlocks();
+    await checkSecretQuests();
+    await renderLeaderboard();
+  }catch(e){console.error('endQuiz:',e);document.getElementById('rRank').textContent='#-';setTimeout(()=>renderLeaderboard(),2000);}
+}
+
+// ══════════════════════════════════════
+// LEADERBOARD
+// ══════════════════════════════════════
+async function renderLeaderboard(){
+  document.getElementById('lbRows').innerHTML='<div style="color:var(--muted);text-align:center;padding:40px;">⏳ Chargement...</div>';
+  document.getElementById('lbPodium').innerHTML='';
+  try{
+    let q=sb.from('profiles').select('id,username,total_score,best_streak,games_played,avatar,role').order('total_score',{ascending:false}).limit(100);
+    if(APP.lbFilter==='eleve') q=q.eq('role','eleve');
+    else if(APP.lbFilter==='formateur') q=q.eq('role','formateur');
+    const {data,error}=await q;
+    if(error||!data||data.length===0){console.warn('profiles blocked:',error?.message);await renderLeaderboardFallback();return;}
+    let entries=(data||[]).filter(p=>(p.total_score||0)>0).map(p=>({...p,score:p.total_score}));
+    if(APP.lbFilter!=='global'&&APP.lbFilter!=='eleve'&&APP.lbFilter!=='formateur'){
+      const {data:sd}=await sb.from('scores').select('user_id,score').eq('category',APP.lbFilter).order('score',{ascending:false}).limit(200);
+      if(sd&&sd.length>0){
+        const bu={};sd.forEach(s=>{if(!bu[s.user_id]||bu[s.user_id]<s.score)bu[s.user_id]=s.score;});
+        entries=(data||[]).filter(p=>bu[p.id]).map(p=>({...p,score:bu[p.id]}));
+        entries.sort((a,b)=>b.score-a.score);
+      }
+    }
+    if(entries.length===0){
+      document.getElementById('lbPodium').innerHTML='';
+      document.getElementById('lbRows').innerHTML='<div style="color:var(--muted);text-align:center;padding:40px;">Aucun score pour l’instant. Sois le premier !</div>';
+      return;
+    }
+    renderPodium(entries.slice(0,20));renderLBRows(entries.slice(0,20));
+  }catch(e){console.error('lb error:',e);await renderLeaderboardFallback();}
+}
+async function renderLeaderboardFallback(){
+  try{
+    // La table scores n'a pas de colonne role — on filtre par catégorie uniquement
+    let q=sb.from('scores').select('user_id,username,score,category').order('score',{ascending:false}).limit(500);
+    if(APP.lbFilter!=='global'&&APP.lbFilter!=='eleve'&&APP.lbFilter!=='formateur') q=q.eq('category',APP.lbFilter);
+    const {data,error}=await q;
+    if(error)throw error;
+    if(!data||data.length===0){
+      document.getElementById('lbPodium').innerHTML='';
+      document.getElementById('lbRows').innerHTML='<div style="color:var(--muted);text-align:center;padding:40px;">Aucun score pour l’instant. Sois le premier !</div>';
+      return;
+    }
+    const byUser={};
+    data.forEach(e=>{
+      if(!byUser[e.user_id]){byUser[e.user_id]={id:e.user_id,username:e.username,score:0,avatar:'😊',role:e.role,games_played:0,best_streak:0};}
+      byUser[e.user_id].score+=e.score;
+      byUser[e.user_id].games_played++;
+    });
+    const sorted=Object.values(byUser).sort((a,b)=>b.score-a.score).slice(0,20);
+    renderPodium(sorted);renderLBRows(sorted);
+  }catch(e){
+    document.getElementById('lbRows').innerHTML='<div style="color:var(--muted);text-align:center;padding:40px;">Erreur : '+e.message+'</div>';
+  }
+}
+
+function filterLB(cat,btn){APP.lbFilter=cat;document.querySelectorAll('.lf-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderLeaderboard();}
+function renderPodium(data){
+  const top=data.slice(0,3);
+  if(!top.length){document.getElementById('lbPodium').innerHTML='';return;}
+  const order=top.length>=2?[top[1],top[0],top[2]].filter(Boolean):[top[0]];
+  const cls=top.length>=2?['p2','p1','p3']:['p1'];
+  const emojis=top.length>=2?['🥈','🥇','🥉']:['🥇'];
+  document.getElementById('lbPodium').innerHTML=order.map((p,i)=>`
+    <div class="pod-slot ${cls[i]}" style="animation:podBounce .5s ${i*.15}s ease both">
+      <div class="pod-av">${p.avatar||'😊'}</div>
+      <div class="pod-name">${p.username}</div>
+      <div class="pod-sc">${(p.score||0).toLocaleString()} pts</div>
+      <div class="pod-block"><div class="pod-rank">${emojis[i]}</div></div>
+    </div>
+  `).join('');
+}
+function renderLBRows(data){
+  document.getElementById('lbRows').innerHTML=data.map((p,i)=>`
+    <div class="lb-row ${p.id===APP.user?.id?'me':''}">
+      <div class="lb-pos">${i+1}</div>
+      <div class="lb-av">${p.avatar||'😊'}</div>
+      <div class="lb-info">
+        <div class="lb-nm">${p.username}${p.role==='formateur'?' <span style="color:var(--c2);font-size:11px">👔</span>':''} ${p.id===APP.user?.id?'<span style="color:var(--c1);font-size:11px">▸ TOI</span>':''}</div>
+        <div class="lb-meta">${p.games_played||0} partie(s) · Série max : ${p.best_streak||0}</div>
+      </div>
+      <div class="lb-sc"><div class="lb-sc-n">${(p.score||0).toLocaleString()}</div><div class="lb-sc-l">pts</div></div>
+    </div>
+  `).join('')||'<div style="color:var(--muted);text-align:center;padding:40px">Aucun score pour ce filtre.</div>';
+}
+
+// ══════════════════════════════════════
+// MULTIPLAYER
+// ══════════════════════════════════════
+function openMulti(){closeModal('diffModal');document.getElementById('multiModal').classList.add('open');showMStep1();}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function showMStep1(){document.getElementById('mStep1').style.display='block';document.getElementById('mStep2').style.display='none';document.getElementById('mStep3').style.display='none';}
+function showJoin(){document.getElementById('mStep1').style.display='none';document.getElementById('mStep3').style.display='block';}
+
+async function createRoom(){
+  const code=Math.floor(1000+Math.random()*9000).toString();
+  APP.roomCode=code;APP.isHost=true;
+  document.getElementById('roomCode').textContent=code;
+  const players=[{name:APP.profile?.username||'Joueur',host:true,avatar:APP.profile?.avatar||'😊'}];
+  renderWaiting(players);
+  document.getElementById('mStep1').style.display='none';
+  document.getElementById('mStep2').style.display='block';
+  // Insert direct sans delete préalable (évite les erreurs RLS)
+  try{
+    const {error}=await sb.from('rooms').insert({
+      code,host_id:APP.user?.id,
+      category:APP.currentCat,difficulty:APP.currentDiff,
+      status:'waiting',players:JSON.stringify(players),
+      created_at:new Date().toISOString()
+    });
+    // Si code en doublon, générer un nouveau et réessayer
+    if(error&&error.code==='23505'){
+      const code2=Math.floor(1000+Math.random()*9000).toString();
+      APP.roomCode=code2;
+      document.getElementById('roomCode').textContent=code2;
+      const {error:e2}=await sb.from('rooms').insert({
+        code:code2,host_id:APP.user?.id,
+        category:APP.currentCat,difficulty:APP.currentDiff,
+        status:'waiting',players:JSON.stringify(players),
+        created_at:new Date().toISOString()
+      });
+      if(e2)throw e2;
+    } else if(error) throw error;
+  }catch(e){
+    console.error('createRoom error:',e);
+    showToast('Erreur création salle ! Réessaie.','err');
+    return;
+  }
+  if(APP.multiSub)sb.removeChannel(APP.multiSub);
+  APP.multiSub=sb.channel('sa-'+APP.roomCode);
+  APP.multiSub
+    .on('broadcast',{event:'player_update'},(pl)=>{
+      const ps=pl.payload.players||[];
+      document.getElementById('pCount').textContent=ps.length;
+      renderWaiting(ps);
+    })
+    .on('broadcast',{event:'game_start'},(pl)=>{
+      APP.currentCat=pl.payload.category||APP.currentCat;
+      APP.currentDiff=pl.payload.difficulty||APP.currentDiff;
+      closeModal('multiModal');launchQuiz();
+    })
+    .subscribe();
+}
+
+async function joinRoom(){
+  const code=document.getElementById('joinCode').value.trim();
+  if(code.length!==4)return showToast('Code à 4 chiffres !','err');
+  try{
+    const {data:rows,error}=await sb.from('rooms').select('*').eq('code',code).limit(1);
+    if(error)throw error;
+    if(!rows||rows.length===0)return showToast('Salle introuvable. Vérifie le code !','err');
+    const roomData=rows[0];
+    if(roomData.status!=='waiting')return showToast('Partie déjà commencée.','err');
+    const players=JSON.parse(roomData.players||'[]');
+    if(players.length>=4)return showToast('Salle pleine (4/4).','err');
+    const alreadyIn=players.find(p=>p.name===(APP.profile?.username||'Joueur'));
+    if(!alreadyIn)players.push({name:APP.profile?.username||'Joueur',host:false,avatar:APP.profile?.avatar||'😊'});
+    await sb.from('rooms').update({players:JSON.stringify(players)}).eq('code',code);
+    APP.roomCode=code;APP.isHost=false;
+    APP.currentCat=roomData.category;APP.currentDiff=roomData.difficulty;
+    document.getElementById('roomCode').textContent=code;
+    document.getElementById('mStep3').style.display='none';
+    document.getElementById('mStep2').style.display='block';
+    document.getElementById('pCount').textContent=players.length;
+    renderWaiting(players);
+    if(APP.multiSub)sb.removeChannel(APP.multiSub);
+    APP.multiSub=sb.channel('sa-'+code);
+    APP.multiSub
+      .on('broadcast',{event:'player_update'},(pl)=>{
+        const ps=pl.payload.players||[];
+        document.getElementById('pCount').textContent=ps.length;
+        renderWaiting(ps);
+      })
+      .on('broadcast',{event:'game_start'},(pl)=>{
+        APP.currentCat=pl.payload.category||APP.currentCat;
+        APP.currentDiff=pl.payload.difficulty||APP.currentDiff;
+        closeModal('multiModal');launchQuiz();
+      })
+      .subscribe(async(status)=>{
+        if(status==='SUBSCRIBED'){
+          try{await APP.multiSub.send({type:'broadcast',event:'player_update',payload:{players}});}catch(e){}
+        }
+      });
+    showToast('Salle rejointe ! En attente du lancement...','ok');
+  }catch(e){
+    console.error('joinRoom error:',e);
+    showToast('Erreur réseau. Réessaie.','err');
+  }
+}
+
+async function launchMulti(){
+  if(!APP.isHost)return showToast('Seul le créateur peut lancer.','err');
+  await saveProfile({multi_games:(APP.profile?.multi_games||0)+1});
+  // Marquer la salle comme started pour bloquer nouveaux joiners
+  try{await sb.from('rooms').update({status:'started'}).eq('code',APP.roomCode);}catch(e){}
+  // Envoyer game_start à tous les joiners
+  try{
+    await APP.multiSub.send({
+      type:'broadcast',event:'game_start',
+      payload:{category:APP.currentCat,difficulty:APP.currentDiff}
+    });
+  }catch(e){console.error('broadcast error:',e);}
+  // Délai un peu plus long pour s'assurer que les joiners reçoivent bien
+  setTimeout(()=>{closeModal('multiModal');launchQuiz();},600);
+}
+
+function renderWaiting(players){
+  document.getElementById('waitPlayers').innerHTML=players.map(p=>`
+    <div class="waiting-player"><div class="wdot"></div><span style="font-size:20px;">${p.avatar||'😊'}</span>${p.name}${p.host?' 👑':''}</div>
+  `).join('');
+}
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+function escH(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(s){return String(s).replace(/'/g,"&#39;").replace(/"/g,'&quot;');}
+function showToast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+
+<!-- AUDIO -->
+<!-- Musique générée par Tone.js -->
+</body>
+</html>
