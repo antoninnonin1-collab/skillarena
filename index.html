@@ -381,6 +381,9 @@ header{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:
       <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="ton@email.com"></div>
       <div class="field"><label>Mot de passe</label><input type="password" id="loginPwd" placeholder="••••••••"></div>
       <button class="btn btn-primary btn-full" onclick="login()">Se connecter →</button>
+      <div style="text-align:center;margin-top:14px;">
+        <span onclick="switchTab('reset')" style="color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;transition:color .2s;" onmouseover="this.style.color='var(--c1)'" onmouseout="this.style.color='var(--muted)'">🔑 Mot de passe oublié ?</span>
+      </div>
     </div>
     <div id="form-signup" style="display:none">
       <div class="field"><label>Pseudo</label><input type="text" id="signupName" placeholder="TonPseudo" maxlength="20"></div>
@@ -394,7 +397,16 @@ header{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:
       </div>
       <button class="btn btn-primary btn-full" onclick="signup()">Créer mon compte →</button>
     </div>
+    <div id="form-reset" style="display:none">
+      <div style="text-align:center;margin-bottom:18px;font-size:13px;color:var(--muted);">Entre ton email et on t'envoie un lien pour réinitialiser ton mot de passe.</div>
+      <div class="field"><label>Email</label><input type="email" id="resetEmail" placeholder="ton@email.com"></div>
+      <button class="btn btn-primary btn-full" onclick="resetPassword()">Envoyer le lien 📧</button>
+      <div style="text-align:center;margin-top:14px;">
+        <span onclick="switchTab('login')" style="color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;" onmouseover="this.style.color='var(--c1)'" onmouseout="this.style.color='var(--muted)'">← Retour à la connexion</span>
+      </div>
+    </div>
     <div class="auth-err" id="authErr"></div>
+    <div class="auth-err" id="authOk" style="color:#00FFA3;"></div>
   </div>
 </div>
 
@@ -1549,7 +1561,9 @@ function switchTab(t){
   document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',(i===0&&t==='login')||(i===1&&t==='signup')));
   document.getElementById('form-login').style.display=t==='login'?'block':'none';
   document.getElementById('form-signup').style.display=t==='signup'?'block':'none';
+  document.getElementById('form-reset').style.display=t==='reset'?'block':'none';
   document.getElementById('authErr').style.display='none';
+  document.getElementById('authOk').style.display='none';
 }
 async function login(){
   const e=document.getElementById('loginEmail').value.trim();
@@ -1565,9 +1579,25 @@ async function signup(){
   const r=document.getElementById('signupRole').value;
   if(!n||!e||!p) return showAuthErr('Remplis tous les champs !');
   if(p.length<6) return showAuthErr('Mot de passe min 6 caractères.');
-  const {data,error}=await sb.auth.signUp({email:e,password:p,options:{data:{username:n,role:r}}});
+  // emailRedirectTo vide = pas de confirmation email requise
+  const {data,error}=await sb.auth.signUp({email:e,password:p,options:{data:{username:n,role:r},emailRedirectTo:null}});
   if(error) return showAuthErr(error.message);
-  if(data.user){await createProfile(data.user,n,r);showToast('Bienvenue '+n+' ! 🎉','ok');}
+  if(data.user){
+    await createProfile(data.user,n,r);
+    // Connexion directe sans attendre confirmation
+    await sb.auth.signInWithPassword({email:e,password:p});
+    showToast('Bienvenue '+n+' ! 🎉','ok');
+  }
+}
+async function resetPassword(){
+  const e=document.getElementById('resetEmail').value.trim();
+  if(!e) return showAuthErr('Entre ton adresse email.');
+  const {error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:window.location.href});
+  if(error) return showAuthErr('Erreur : '+error.message);
+  const ok=document.getElementById('authOk');
+  ok.textContent='📧 Email envoyé ! Vérifie ta boîte mail.';
+  ok.style.display='block';
+  document.getElementById('authErr').style.display='none';
 }
 function showAuthErr(m){const el=document.getElementById('authErr');el.textContent=m;el.style.display='block';}
 async function logout(){await sb.auth.signOut();}
