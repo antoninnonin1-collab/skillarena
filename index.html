@@ -6,6 +6,7 @@
 <title>SkillArena — CFA Villemendeur</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 <style>
 :root {
   --c1:#F5C842;--c2:#FF4D6A;
@@ -1363,7 +1364,6 @@ const FONTS=[
 ];
 let currentTheme=parseInt(localStorage.getItem('sa_theme')||'1');
 let currentFont=localStorage.getItem('sa_font')||'outfit';
-let musicOn=false;
 
 function applyTheme(id){ currentTheme=id; document.body.setAttribute('data-theme',id); localStorage.setItem('sa_theme',id); }
 function applyFont(id){ currentFont=id; const f=FONTS.find(x=>x.id===id); if(f) document.body.style.fontFamily=f.family; localStorage.setItem('sa_font',id); }
@@ -1393,22 +1393,73 @@ function openFontPicker(){ buildFontGrid(); document.getElementById('fontModal')
 // ══════════════════════════════════════
 // MUSIC
 // ══════════════════════════════════════
-function toggleMusic(){
-  const audio=document.getElementById('bgMusic');
+// ══════════════════════════════════════
+// MUSIC ENGINE (Tone.js)
+// ══════════════════════════════════════
+let musicOn=false;
+let toneStarted=false;
+let musicParts=[];
+
+async function initMusic(){
+  if(toneStarted)return;
+  await Tone.start();
+  toneStarted=true;
+
+  const reverb=new Tone.Reverb({decay:4,wet:0.45}).toDestination();
+  const delay=new Tone.FeedbackDelay('8n.',0.22).connect(reverb);
+  const limiter=new Tone.Limiter(-4).toDestination();
+  reverb.connect(limiter);
+
+  const bassSynth=new Tone.Synth({oscillator:{type:'sawtooth'},envelope:{attack:0.05,decay:0.3,sustain:0.6,release:1.2},volume:-12}).connect(reverb);
+  const bassNotes=['C1','C1','G1','F1','C1','C1','Ab1','G1'];
+  const bassPart=new Tone.Sequence((time,note)=>{bassSynth.triggerAttackRelease(note,'2n',time);},bassNotes,'2n');
+
+  const padSynth=new Tone.PolySynth(Tone.Synth,{oscillator:{type:'sine'},envelope:{attack:1.5,decay:1,sustain:0.7,release:3},volume:-20}).connect(reverb);
+  const padChords=[['C2','Eb2','G2','Bb2'],['C2','Eb2','G2','Bb2'],['G2','Bb2','D3','F3'],['F2','Ab2','C3','Eb3']];
+  const padPart=new Tone.Sequence((time,chord)=>{padSynth.triggerAttackRelease(chord,'1m',time);},padChords,'1m');
+
+  const leadSynth=new Tone.Synth({oscillator:{type:'square'},envelope:{attack:0.02,decay:0.1,sustain:0.4,release:0.8},volume:-18}).connect(delay);
+  const melody=['C4',null,'Eb4',null,'G4',null,'Eb4','D4','C4',null,'Bb3',null,'G3',null,null,null,'F3',null,'Ab3',null,'C4',null,'Bb3','Ab3','G3',null,'F3',null,'Eb3',null,null,null];
+  const leadPart=new Tone.Sequence((time,note)=>{if(note)leadSynth.triggerAttackRelease(note,'8n',time);},melody,'8n');
+
+  const kick=new Tone.MembraneSynth({volume:-8}).connect(limiter);
+  const snare=new Tone.NoiseSynth({noise:{type:'white'},envelope:{attack:0.001,decay:0.15,sustain:0,release:0.05},volume:-16}).connect(reverb);
+  const hihat=new Tone.MetalSynth({frequency:400,envelope:{attack:0.001,decay:0.05,release:0.01},harmonicity:5.1,modulationIndex:32,resonance:4000,octaves:1.5,volume:-24}).connect(reverb);
+
+  const kickPart=new Tone.Sequence((time,hit)=>{if(hit)kick.triggerAttackRelease('C1','8n',time);},[1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0],'16n');
+  const snarePart=new Tone.Sequence((time,hit)=>{if(hit)snare.triggerAttackRelease('16n',time);},[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],'16n');
+  const hihatPart=new Tone.Sequence((time,hit)=>{if(hit)hihat.triggerAttackRelease('32n',time);},[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1],'16n');
+
+  const arpSynth=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:0.01,decay:0.1,sustain:0.2,release:0.3},volume:-22}).connect(delay);
+  const arpNotes=['C3','Eb3','G3','Bb3','C4','Bb3','G3','Eb3'];
+  const arpPart=new Tone.Sequence((time,note)=>{arpSynth.triggerAttackRelease(note,'16n',time);},arpNotes,'8n');
+
+  Tone.Transport.bpm.value=88;
+  Tone.Transport.loop=true;
+  Tone.Transport.loopEnd='8m';
+  musicParts=[bassPart,padPart,leadPart,kickPart,snarePart,hihatPart,arpPart];
+}
+
+async function toggleMusic(){
   musicOn=!musicOn;
   const icon=musicOn?'🎵':'🔇';
   document.getElementById('musicBtn').textContent=icon;
-  document.getElementById('homeMusIcon').textContent=icon;
+  if(document.getElementById('homeMusIcon'))document.getElementById('homeMusIcon').textContent=icon;
   if(musicOn){
-    audio.volume=0.18;
-    audio.play().then(()=>{}).catch(()=>{
-      showToast('Clique d\'abord sur la page pour activer la musique','err');
+    try{
+      await initMusic();
+      musicParts.forEach(p=>p.start(0));
+      Tone.Transport.start();
+      showToast('🎵 Musique activée','ok');
+    }catch(e){
+      console.error('Music error:',e);
       musicOn=false;
       document.getElementById('musicBtn').textContent='🔇';
-      document.getElementById('homeMusIcon').textContent='🔇';
-    });
+    }
   } else {
-    audio.pause();
+    musicParts.forEach(p=>p.stop());
+    Tone.Transport.stop();
+    showToast('🔇 Musique désactivée','ok');
   }
 }
 
@@ -2268,9 +2319,6 @@ function showToast(msg,type='ok'){const t=document.getElementById('toast');t.tex
 </script>
 
 <!-- AUDIO -->
-<audio id="bgMusic" loop>
-  <source src="https://cdn.pixabay.com/audio/2024/02/28/audio_bfb8c6c3ab.mp3" type="audio/mpeg">
-  <source src="https://cdn.pixabay.com/audio/2022/10/16/audio_12b6a4b3a5.mp3" type="audio/mpeg">
-</audio>
+<!-- Musique générée par Tone.js -->
 </body>
 </html>
